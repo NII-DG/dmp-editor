@@ -6,6 +6,7 @@ import { RecoilRoot } from "recoil"
 
 import ErrorPage from "@/pages/ErrorPage"
 import Home from "@/pages/Home"
+import NotFound from "@/pages/NotFound"
 import theme from "@/theme"
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
           <ErrorBoundary FallbackComponent={ErrorPage} onReset={() => window.location.reload()}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </ErrorBoundary>
         </RecoilRoot>
