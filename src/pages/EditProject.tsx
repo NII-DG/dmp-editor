@@ -1,24 +1,65 @@
+import { useEffect, useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
-import { useRecoilValueLoadable } from "recoil"
+import { useParams } from "react-router"
+import { useRecoilValue, useRecoilValueLoadable, useSetRecoilState } from "recoil"
 
 import FormCard from "@/components/EditProject/FormCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import NoAuthCard from "@/components/NoAuthCard"
-import { authenticatedSelector } from "@/store/token"
+import { FilesNode, ProjectInfo, getProjectInfo, readDmpFile } from "@/grdmClient"
+import { dmpAtom } from "@/store/dmp"
+import { authenticatedSelector, tokenAtom } from "@/store/token"
+import { userSelector } from "@/store/user"
 
-export default function EditProject() {
+interface EditProjectProps {
+  isNew?: boolean
+}
+
+export default function EditProject({ isNew }: EditProjectProps) {
   const { showBoundary } = useErrorBoundary()
-
   const auth = useRecoilValueLoadable(authenticatedSelector)
-  if (auth.state === "hasError") {
-    showBoundary(auth.contents)
-  }
+  const user = useRecoilValueLoadable(userSelector)
+  const projectId = useParams<{ projectId: string }>().projectId!
+  const token = useRecoilValue(tokenAtom)
+  const [project, setProject] = useState<ProjectInfo | undefined>(undefined)
+  const [dmpFileNode, setDmpFileNode] = useState<FilesNode | undefined>(undefined)
+  const setDmp = useSetRecoilState(dmpAtom)
 
-  if (auth.state === "loading") {
+  const isLogin = (auth.state === "hasValue" && !!auth.contents) &&
+    (user.state === "hasValue" && !!user.contents)
+  const loadingData = !isNew && (project === undefined || dmpFileNode === undefined)
+
+  useEffect(() => {
+    if (!isNew && isLogin) {
+      getProjectInfo(token, projectId)
+        .then((project) => {
+          setProject(project)
+          readDmpFile(token, projectId)
+            .then(({ dmp, node }) => {
+              setDmp(dmp)
+              setDmpFileNode(node)
+            })
+            .catch((error) => {
+              showBoundary(error)
+            })
+        })
+        .catch((error) => {
+          showBoundary(error)
+        })
+    }
+  }, [isLogin, isNew, projectId, token, showBoundary, setDmp])
+
+  if (auth.state === "hasError") showBoundary(auth.contents)
+  if (user.state === "hasError") showBoundary(user.contents)
+
+  if (!isLogin || loadingData) {
     return (
       <Frame noAuth>
-        <Loading msg="認証中..." />
+        <Loading msg={!isLogin ?
+          "認証中..." :
+          "プロジェクト情報を取得中..."
+        } />
       </Frame>
     )
   }
@@ -33,7 +74,14 @@ export default function EditProject() {
 
   return (
     <Frame>
-      <FormCard sx={{ mt: "1.5rem" }} />
+      <FormCard
+        sx={{ mt: "1.5rem" }}
+        isNew={!!isNew}
+        projectId={projectId}
+        user={user.contents!}
+        project={project}
+        dmpFileNode={dmpFileNode}
+      />
     </Frame>
   )
 }

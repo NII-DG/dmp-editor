@@ -1,6 +1,6 @@
-import { Box, AppBar, Typography, colors } from "@mui/material"
+import { Box, AppBar, colors, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { Link } from "react-router"
+import { useNavigate } from "react-router"
 
 import { headerColor } from "@/theme"
 
@@ -11,6 +11,8 @@ interface AppHeaderBaseProps {
 }
 
 export default function AppHeaderBase({ sx, leftChildren, rightChildren }: AppHeaderBaseProps) {
+  const navigate = useNavigate()
+
   return (
     <AppBar position="static" sx={{
       ...sx,
@@ -24,17 +26,20 @@ export default function AppHeaderBase({ sx, leftChildren, rightChildren }: AppHe
     }}>
       {/* Left Box */}
       <Box sx={{ ml: "1.5rem" }}>
-        <Link to="/" style={{ textDecoration: "none" }}>
-          <Typography
-            sx={{
-              color: colors.grey[300],
-              fontSize: "1.75rem",
-              letterSpacing: "0.25rem",
-            }}
-            component="span"
-            children="DMP editor"
-          />
-        </Link>
+        <Link
+          href="/"
+          onClick={(event) => {
+            event?.preventDefault()
+            navigate("/")
+          }}
+          sx={{
+            textDecoration: "none",
+            color: colors.grey[300],
+            fontSize: "1.75rem",
+            letterSpacing: "0.25rem",
+          }}
+          children="DMP editor"
+        />
         {leftChildren}
       </Box>
 

@@ -4,40 +4,35 @@ import { SxProps } from "@mui/system"
 import { useEffect, useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
 import { useNavigate } from "react-router"
-import { useRecoilValue, useRecoilValueLoadable } from "recoil"
+import { useRecoilValue } from "recoil"
 
 import OurCard from "@/components/OurCard"
-import { Project, listingProjects, DMP_PROJECT_PREFIX, formatDateToTimezone } from "@/grdmClient"
-import { tokenAtom, authenticatedSelector } from "@/store/token"
-import { userSelector } from "@/store/user"
+import { ProjectInfo, listingProjects, DMP_PROJECT_PREFIX, formatDateToTimezone } from "@/grdmClient"
+import { tokenAtom } from "@/store/token"
+import { User } from "@/store/user"
 
 export interface ProjectTableProps {
   sx?: SxProps
+  user: User
 }
 
-export default function ProjectTable({ sx }: ProjectTableProps) {
+// Called after authentication
+export default function ProjectTable({ sx, user }: ProjectTableProps) {
   const navigate = useNavigate()
   const { showBoundary } = useErrorBoundary()
   const token = useRecoilValue(tokenAtom)
-  const auth = useRecoilValueLoadable(authenticatedSelector)
-  const user = useRecoilValueLoadable(userSelector)
-  const isAuth = (auth.state === "hasValue" && auth.contents) &&
-    (user.state === "hasValue" && user.contents) &&
-    token !== ""
 
-  const [projects, setProjects] = useState<Project[]>([])
+  const [projects, setProjects] = useState<ProjectInfo[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!isAuth) return
-
     setLoading(true)
     listingProjects(token).then((projects) => {
       setProjects(projects.filter(project => project.title.startsWith(DMP_PROJECT_PREFIX)))
     }).catch((error) => {
       showBoundary(error)
     }).finally(() => setLoading(false))
-  }, [isAuth, token, showBoundary])
+  }, [token, showBoundary])
 
   return (
     <OurCard sx={{ ...sx }}>
@@ -55,7 +50,7 @@ export default function ProjectTable({ sx }: ProjectTableProps) {
               {"あなたの GRDM アカウントに紐づく DMP Project 一覧です。"}
             </Typography>
             <Box sx={{ mt: "1rem" }}>
-              <Button variant="contained" color="primary" onClick={() => navigate("/project/new")} sx={{ textTransform: "none" }}>
+              <Button variant="contained" color="primary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
                 {"新規 DMP Project を作成する"}
               </Button>
             </Box>
@@ -78,7 +73,10 @@ export default function ProjectTable({ sx }: ProjectTableProps) {
                           target="_blank"
                           rel="noopener noreferrer"
                           sx={{
-                            display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            textDecoration: "none",
                           }}
                         >
                           {project.title}
@@ -86,17 +84,17 @@ export default function ProjectTable({ sx }: ProjectTableProps) {
                         </Link>
                       </TableCell>
                       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
-                        {formatDateToTimezone(project.dateCreated, user.contents.timezone)}
+                        {formatDateToTimezone(project.dateCreated, user.timezone)}
                       </TableCell>
                       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
-                        {formatDateToTimezone(project.dateModified, user.contents.timezone)}
+                        {formatDateToTimezone(project.dateModified, user.timezone)}
                       </TableCell>
                       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "10%" }}>
                         <Button
                           variant="outlined"
                           color="primary"
                           size="small"
-                          onClick={() => navigate(`/project/${project.id}`)}
+                          onClick={() => navigate(`/projects/${project.id}`)}
                         >
                           {"編集"}
                         </Button>
@@ -111,7 +109,7 @@ export default function ProjectTable({ sx }: ProjectTableProps) {
           <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
             <Typography children="Project がありません。" />
             <Box sx={{ mt: "1rem" }}>
-              <Button variant="contained" color="primary" onClick={() => navigate("/project/new")} sx={{ textTransform: "none" }}>
+              <Button variant="contained" color="primary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
                 {"新規 DMP Project を作成する"}
               </Button>
             </Box>

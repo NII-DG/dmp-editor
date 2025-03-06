@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { Dmp } from "@/dmp"
+
 export const DMP_FILE_NAME = "dmp-project.json"
 export const DMP_PROJECT_PREFIX = "dmp-project-"
 const GRDM_API_BASE_URL = "https://api.rdm.nii.ac.jp/v2/"
@@ -115,29 +117,55 @@ export const getMe = async (token: string): Promise<GetMeResponse> => {
   }
 }
 
-export interface GetNodesResponse {
-  data: {
-    id: string
-    type: "nodes"
-    attributes: {
-      title: string
-      description: string
-      category: string
-      date_created: string // "2023-07-04T04:08:12.597030"
-      date_modified: string // "2023-07-04T04:08:12.597030"
-    }
-    relationships: Record<string, {
-      links: {
-        related: {
-          href: string
-        }
-      }
-    }>
+export interface NodeData {
+  id: string
+  type: "nodes"
+  attributes: {
+    title: string
+    description: string
+    category: string
+    date_created: string // "2023-07-04T04:08:12.597030"
+    date_modified: string // "2023-07-04T04:08:12.597030"
+  }
+  relationships: Record<string, {
     links: {
-      html: string
-      self: string
+      related: {
+        href: string
+      }
     }
-  }[]
+  }>
+  links: {
+    html: string
+    self: string
+  }
+}
+
+export const nodeDataSchema = z.object({
+  id: z.string(),
+  type: z.literal("nodes"),
+  attributes: z.object({
+    title: z.string(),
+    description: z.string(),
+    category: z.string(),
+    date_created: z.string(),
+    date_modified: z.string(),
+  }),
+  relationships: z.record(
+    z.object({
+      links: z.object({
+        related: z.object({
+          href: z.string(),
+        }),
+      }),
+    })),
+  links: z.object({
+    html: z.string(),
+    self: z.string(),
+  }),
+})
+
+export interface GetNodesResponse {
+  data: NodeData[]
   links: {
     first: string | null
     last: string | null
@@ -151,31 +179,7 @@ export interface GetNodesResponse {
 }
 
 export const getNodesResponseSchema = z.object({
-  data: z.array(
-    z.object({
-      id: z.string(),
-      type: z.literal("nodes"),
-      attributes: z.object({
-        title: z.string(),
-        description: z.string(),
-        category: z.string(),
-        date_created: z.string(),
-        date_modified: z.string(),
-      }),
-      relationships: z.record(
-        z.object({
-          links: z.object({
-            related: z.object({
-              href: z.string(),
-            }),
-          }),
-        })),
-      links: z.object({
-        html: z.string(),
-        self: z.string(),
-      }),
-    }),
-  ),
+  data: z.array(nodeDataSchema),
   links: z.object({
     first: z.string().nullable(),
     last: z.string().nullable(),
@@ -229,7 +233,7 @@ export const getNodes = async (token: string, followPagination = false): Promise
   }
 }
 
-export interface Project {
+export interface ProjectInfo {
   id: string
   type: string
   title: string
@@ -241,20 +245,22 @@ export interface Project {
   self: string
 }
 
-export const listingProjects = async (token: string): Promise<Project[]> => {
+const nodeToProjectInfo = (node: NodeData): ProjectInfo => ({
+  id: node.id,
+  type: node.type,
+  title: node.attributes.title,
+  description: node.attributes.description,
+  category: node.attributes.category,
+  dateCreated: node.attributes.date_created,
+  dateModified: node.attributes.date_modified,
+  html: node.links.html,
+  self: node.links.self,
+})
+
+export const listingProjects = async (token: string): Promise<ProjectInfo[]> => {
   const response = await getNodes(token, true)
   return response.data
-    .map((node) => ({
-      id: node.id,
-      type: node.type,
-      title: node.attributes.title,
-      description: node.attributes.description,
-      category: node.attributes.category,
-      dateCreated: node.attributes.date_created,
-      dateModified: node.attributes.date_modified,
-      html: node.links.html,
-      self: node.links.self,
-    }))
+    .map((node) => (nodeToProjectInfo(node)))
     .filter((project) => project.category === "project")
 }
 
@@ -274,57 +280,11 @@ export const formatDateToTimezone = (dateString: string, timeZone = "Asia/Tokyo"
 }
 
 export interface GetProjectResponse {
-  data: {
-    id: string
-    type: string
-    attributes: {
-      title: string
-      description: string
-      category: string
-      date_created: string // "2023-07-04T04:08:12.597030"
-      date_modified: string // "2023-07-04T04:08:12.597030"
-      relationships: {
-        files: {
-          links: {
-            related: {
-              href: string
-            }
-          }
-        }
-      }
-    }
-    links: {
-      html: string
-      self: string
-    }
-  }
+  data: NodeData
 }
 
 export const getProjectResponseSchema = z.object({
-  data: z.object({
-    id: z.string(),
-    type: z.string(),
-    attributes: z.object({
-      title: z.string(),
-      description: z.string(),
-      category: z.string(),
-      date_created: z.string(),
-      date_modified: z.string(),
-      relationships: z.object({
-        files: z.object({
-          links: z.object({
-            related: z.object({
-              href: z.string(),
-            }),
-          }),
-        }),
-      }),
-    }),
-    links: z.object({
-      html: z.string(),
-      self: z.string(),
-    }),
-  }),
+  data: nodeDataSchema,
 })
 
 export const getProject = async (token: string, projectId: string): Promise<GetProjectResponse> => {
@@ -346,6 +306,15 @@ export const getProject = async (token: string, projectId: string): Promise<GetP
   } catch (error) {
     console.error("Failed to get project from GRDM", error)
     throw error
+  }
+}
+
+export const getProjectInfo = async (token: string, projectId: string): Promise<ProjectInfo> => {
+  try {
+    const response = await getProject(token, projectId)
+    return nodeToProjectInfo(response.data)
+  } catch (error) {
+    throw new Error("Failed to get project information", { cause: error })
   }
 }
 
@@ -663,5 +632,69 @@ export const writeFile = async (token: string, projectId: string, path: string, 
     }
   } catch (error) {
     throw new Error("Failed to write file", { cause: error })
+  }
+}
+
+export const readDmpFile = async (token: string, projectId: string): Promise<{
+  dmp: Dmp
+  node: FilesNode
+}> => {
+  try {
+    const { content, node } = await readFile(token, projectId, DMP_FILE_NAME)
+    return {
+      dmp: JSON.parse(content) as Dmp, // TODO: validate DMP schema
+      node,
+    }
+  } catch (error) {
+    throw new Error("Failed to read DMP file", { cause: error })
+  }
+}
+
+export const writeDmpFile = async (token: string, projectId: string, dmp: Dmp): Promise<void> => {
+  try {
+    await writeFile(token, projectId, DMP_FILE_NAME, JSON.stringify(dmp, null, 2))
+  } catch (error) {
+    throw new Error("Failed to write DMP file", { cause: error })
+  }
+}
+
+export interface CreateProjectResponse {
+  data: NodeData
+}
+
+export const createProjectResponseSchema = z.object({
+  data: nodeDataSchema,
+})
+
+export const createProject = async (token: string, projectName: string): Promise<ProjectInfo> => {
+  const url = `${GRDM_API_BASE_URL}/nodes/`
+  const data = {
+    data: {
+      type: "nodes",
+      attributes: {
+        title: projectName,
+        category: "project",
+      },
+    },
+  }
+
+  try {
+    const response = await fetchWithRetry(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
+    }
+    const json = await response.json()
+    const node = createProjectResponseSchema.parse(json).data
+
+    return nodeToProjectInfo(node)
+  } catch (error) {
+    throw new Error("Failed to create project", { cause: error })
   }
 }
