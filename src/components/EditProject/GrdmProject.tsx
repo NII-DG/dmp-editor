@@ -5,8 +5,9 @@ import { useEffect, useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"
 
+import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import { ProjectInfo, listingProjects, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { projectNameAtom, formValidationStateAtom } from "@/store/dmp"
+import { projectNameAtom, formValidationStateAtom, submitTriggerAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
 
@@ -23,7 +24,9 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
   const setFormValidationState = useSetRecoilState(formValidationStateAtom)
   const [existsProjectNames, setExistsProjectNames] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const submitTrigger = useRecoilValue(submitTriggerAtom)
 
+  // Initialize existsProjectNames
   useEffect(() => {
     if (!isNew) return
 
@@ -36,20 +39,15 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
     }).catch((error) => {
       showBoundary(error)
     })
-  }, [isNew, token, showBoundary])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const changeProjectName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isNew) return
-
-    const newValue = e.target.value
-    setProjectName(newValue)
-
-    if (existsProjectNames.includes(`${DMP_PROJECT_PREFIX}${newValue}`)) {
+  const validateProjectName = (value: string) => {
+    if (existsProjectNames.includes(`${DMP_PROJECT_PREFIX}${value}`)) {
       setError("同じ名前の GRDM プロジェクトが既に存在します。")
       setFormValidationState(prev => ({ ...prev, projectName: false }))
       return
     }
-    if (newValue === "") {
+    if (value === "") {
       setError("プロジェクト名を入力してください。")
       setFormValidationState(prev => ({ ...prev, projectName: false }))
       return
@@ -58,6 +56,21 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
     setError(null)
     setFormValidationState(prev => ({ ...prev, projectName: true }))
   }
+
+  const changeProjectName = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isNew) return
+
+    const newValue = e.target.value
+    setProjectName(newValue)
+    validateProjectName(newValue)
+  }
+
+  // Click submit button
+  useEffect(() => {
+    if (!isNew) return
+    if (submitTrigger === 0) return
+    validateProjectName(projectName)
+  }, [submitTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Box sx={{ ...sx }}>
@@ -68,7 +81,7 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
           {"作成する GRDM プロジェクトの名前を入力してください。"}
         </Typography>
         <FormControl fullWidth sx={{ mt: "1rem" }}>
-          <Typography component="label" sx={{ fontSize: "0.9rem", mb: "0.25rem" }} children="GRDM プロジェクト名" />
+          <OurFormLabel label="GRDM プロジェクト名" required />
           <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
             <Typography
               sx={{ fontFamily: "monospace", color: theme.palette.grey[700], mb: "1.6rem" }}
@@ -83,7 +96,7 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
                 error :
                 "\"dmp-project-\" という prefix が付与されます。"
               }
-              sx={{ maxWidth: "480px" }}
+              sx={{ maxWidth: "380px" }}
               size="small"
               fullWidth
             />

@@ -1,9 +1,9 @@
 import { Box, Typography, Button, Divider } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
 import { useNavigate } from "react-router"
-import { useRecoilValue } from "recoil"
+import { useRecoilValue, useSetRecoilState } from "recoil"
 
 import DataInfoSection from "@/components/EditProject/DataInfoSection"
 import DmpMetadataSection from "@/components/EditProject/DmpMetadataSection"
@@ -11,9 +11,8 @@ import GrdmProject from "@/components/EditProject/GrdmProject"
 import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
 import OurCard from "@/components/OurCard"
-import { Dmp } from "@/dmp"
-import { writeDmpFile, createProject, DMP_PROJECT_PREFIX, ProjectInfo, FilesNode } from "@/grdmClient"
-import { dmpAtom, formValidSelector, projectNameAtom } from "@/store/dmp"
+import { writeDmpFile, createProject, DMP_PROJECT_PREFIX, ProjectInfo } from "@/grdmClient"
+import { dmpAtom, formValidationStateAtom, formValidSelector, projectNameAtom, submitTriggerAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { User } from "@/store/user"
 
@@ -23,20 +22,30 @@ export interface FormCardProps {
   projectId: string
   user: User
   project?: ProjectInfo
-  dmpFileNode?: FilesNode
 }
 
 // Called after authentication
-export default function FormCard({ sx, isNew, projectId, user, project, dmpFileNode }: FormCardProps) {
+export default function FormCard({ sx, isNew, projectId, user, project }: FormCardProps) {
   const navigate = useNavigate()
   const { showBoundary } = useErrorBoundary()
   const token = useRecoilValue(tokenAtom)
   const projectName = useRecoilValue(projectNameAtom) // No prefix
   const dmp = useRecoilValue(dmpAtom)
   const isFormValid = useRecoilValue(formValidSelector)
+  const formValidationState = useRecoilValue(formValidationStateAtom)
+  const setSubmitTrigger = useSetRecoilState(submitTriggerAtom)
+  const [submitRequested, setSubmitRequested] = useState<boolean>(false)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSave = () => {
+    setSubmitTrigger((prev) => prev + 1)
+    setSubmitRequested(true)
+  }
+
+  useEffect(() => {
+    if (!submitRequested) return
+    if (!isFormValid) return
+
     setSubmitting(true)
 
     if (isNew) {
@@ -60,12 +69,15 @@ export default function FormCard({ sx, isNew, projectId, user, project, dmpFileN
       writeDmpFile(token, projectId, dmp)
         .then(() => {
           setSubmitting(false)
-        }).catch((error) => {
+        })
+        .catch((error) => {
           setSubmitting(false)
           showBoundary(error)
         })
     }
-  }
+
+    setSubmitRequested(false)
+  }, [formValidationState]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <OurCard sx={{ ...sx }}>
@@ -81,7 +93,7 @@ export default function FormCard({ sx, isNew, projectId, user, project, dmpFileN
         <Divider sx={{ my: "1.5rem" }} />
         <ProjectInfoSection />
         <Divider sx={{ my: "1.5rem" }} />
-        <PersonInfoSection />
+        <PersonInfoSection user={user} />
         <Divider sx={{ my: "1.5rem" }} />
         <DataInfoSection />
       </Box>

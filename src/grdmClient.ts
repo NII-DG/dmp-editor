@@ -199,7 +199,7 @@ export const getNodes = async (token: string, followPagination = false): Promise
 
   try {
     while (nextUrl) {
-      const response = await fetchWithRetry(url, {
+      const response = await fetchWithRetry(nextUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -430,7 +430,7 @@ export const getFiles = async (token: string, url: string, followPagination = fa
 
   try {
     while (nextUrl) {
-      const response = await fetchWithRetry(url, {
+      const response = await fetchWithRetry(nextUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

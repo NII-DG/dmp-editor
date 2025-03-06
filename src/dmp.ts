@@ -9,9 +9,13 @@ export interface Dmp {
   dataInfo: DataInfo[] // 研究データ情報
 }
 
+export type RevisionType = "新規" | "修正" | "更新"
+export const revisionType = ["新規", "修正", "更新"] as const
+export const revisionTypeSchema = z.enum(revisionType)
+
 // DMP 作成・更新情報
 export interface DmpMetadata {
-  revisionType: "新規" | "修正" | "更新" // 種別
+  revisionType: RevisionType // 種別
   submissionDate: string // 提出日 YYYY-MM-DD
   dateCreated: string // DMP作成年月日 YYYY-MM-DD
   dateModified: string // DMP最終更新年月日 YYYY-MM-DD
@@ -96,13 +100,18 @@ export interface DataInfo {
 //   - free url
 //   - doi
 
+export const todayString = (): string => {
+  // YYYY-MM-DD
+  return new Date().toISOString().split("T")[0]
+}
+
 export const initDmp = (): Dmp => {
   return {
     metadata: {
       revisionType: "新規",
-      submissionDate: "",
-      dateCreated: "",
-      dateModified: "",
+      submissionDate: todayString(),
+      dateCreated: todayString(),
+      dateModified: todayString(),
     },
     projectInfo: {
       fundingAgency: "",

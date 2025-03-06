@@ -30,6 +30,7 @@ export default function EditProject({ isNew }: EditProjectProps) {
     (user.state === "hasValue" && !!user.contents)
   const loadingData = !isNew && (project === undefined || dmpFileNode === undefined)
 
+  // Load project info and DMP file
   useEffect(() => {
     if (!isNew && isLogin) {
       getProjectInfo(token, projectId)
@@ -48,7 +49,7 @@ export default function EditProject({ isNew }: EditProjectProps) {
           showBoundary(error)
         })
     }
-  }, [isLogin, isNew, projectId, token, showBoundary, setDmp])
+  }, [isLogin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (auth.state === "hasError") showBoundary(auth.contents)
   if (user.state === "hasError") showBoundary(user.contents)
@@ -80,7 +81,6 @@ export default function EditProject({ isNew }: EditProjectProps) {
         projectId={projectId}
         user={user.contents!}
         project={project}
-        dmpFileNode={dmpFileNode}
       />
     </Frame>
   )

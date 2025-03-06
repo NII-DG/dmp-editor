@@ -1,38 +1,21 @@
 import { OpenInNew } from "@mui/icons-material"
-import { Box, Button, CircularProgress, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors } from "@mui/material"
+import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { useEffect, useState } from "react"
-import { useErrorBoundary } from "react-error-boundary"
 import { useNavigate } from "react-router"
-import { useRecoilValue } from "recoil"
 
 import OurCard from "@/components/OurCard"
-import { ProjectInfo, listingProjects, DMP_PROJECT_PREFIX, formatDateToTimezone } from "@/grdmClient"
-import { tokenAtom } from "@/store/token"
+import { ProjectInfo, formatDateToTimezone } from "@/grdmClient"
 import { User } from "@/store/user"
 
 export interface ProjectTableProps {
   sx?: SxProps
   user: User
+  projects: ProjectInfo[]
 }
 
 // Called after authentication
-export default function ProjectTable({ sx, user }: ProjectTableProps) {
+export default function ProjectTable({ sx, user, projects }: ProjectTableProps) {
   const navigate = useNavigate()
-  const { showBoundary } = useErrorBoundary()
-  const token = useRecoilValue(tokenAtom)
-
-  const [projects, setProjects] = useState<ProjectInfo[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    setLoading(true)
-    listingProjects(token).then((projects) => {
-      setProjects(projects.filter(project => project.title.startsWith(DMP_PROJECT_PREFIX)))
-    }).catch((error) => {
-      showBoundary(error)
-    }).finally(() => setLoading(false))
-  }, [token, showBoundary])
 
   return (
     <OurCard sx={{ ...sx }}>
@@ -42,9 +25,7 @@ export default function ProjectTable({ sx, user }: ProjectTableProps) {
         children="DMP Project 一覧"
       />
       <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1.5rem", mt: "0.5rem" }}>
-        {loading ? (
-          <CircularProgress size={24} sx={{ visibility: loading ? "visible" : "hidden" }} />
-        ) : projects.length !== 0 ? (
+        {projects.length !== 0 ? (
           <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
             <Typography>
               {"あなたの GRDM アカウントに紐づく DMP Project 一覧です。"}

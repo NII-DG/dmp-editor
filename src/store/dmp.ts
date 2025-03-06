@@ -20,14 +20,26 @@ export const projectNameAtom = atom<string>({
 
 export interface FormValidationState {
   projectName: boolean
+  metadata: {
+    revisionType: boolean
+    submissionDate: boolean
+    dateCreated: boolean
+    dateModified: boolean
+  }
 }
 
 export const initFormValidationState = (): FormValidationState => ({
   projectName: true,
+  metadata: {
+    revisionType: true,
+    submissionDate: true,
+    dateCreated: true,
+    dateModified: true,
+  },
 })
 
 export const isFormValid = (formState: FormValidationState): boolean => {
-  return Object.values(formState).every(value => value)
+  return formState.projectName && Object.values(formState.metadata).every(value => value)
 }
 
 export const formValidationStateAtom = atom<FormValidationState>({
@@ -38,4 +50,9 @@ export const formValidationStateAtom = atom<FormValidationState>({
 export const formValidSelector = selector<boolean>({
   key: "dmp-editor.formValidSelector",
   get: ({ get }) => isFormValid(get(formValidationStateAtom)),
+})
+
+export const submitTriggerAtom = atom<number>({
+  key: "dmp-editor.submitTrigger",
+  default: 0,
 })
