@@ -18,7 +18,7 @@ export default function Loading({ msg }: LoadingProps) {
       }}
     >
       <CircularProgress size={60} />
-      {msg &&
+      {!!msg &&
         <Typography sx={{ mt: 2, fontSize: "1.2rem", fontWeight: "bold", color: "text.secondary" }} children={msg} />
       }
     </Box>

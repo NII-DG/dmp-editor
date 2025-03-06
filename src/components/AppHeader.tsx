@@ -1,4 +1,4 @@
-import { AccountCircleOutlined, ArrowDropDownOutlined, LogoutOutlined, FileCopyOutlined, Check } from "@mui/icons-material"
+import { AccountCircleOutlined, ArrowDropDownOutlined, LogoutOutlined, FileCopyOutlined, Check, OpenInNew } from "@mui/icons-material"
 import { Button, Menu, MenuItem, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
@@ -59,6 +59,16 @@ export default function AppHeader({ sx }: AppHeaderProps) {
               open={Boolean(menuAnchorEl)}
               onClose={() => setMenuAnchorEl(null)}
             >
+              <MenuItem
+                component="a"
+                href={user.contents.grdmProfileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ minWidth: "220px" }}
+              >
+                <OpenInNew sx={{ mr: "0.5rem" }} />
+                {"Go to GRDM Profile"}
+              </MenuItem>
               <MenuItem onClick={handleCopy} sx={{ minWidth: "220px" }}>
                 {copied ? <>
                   <Check sx={{ mr: "0.5rem" }} />

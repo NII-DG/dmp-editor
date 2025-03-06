@@ -1,16 +1,16 @@
 import { useErrorBoundary } from "react-error-boundary"
 import { useRecoilValueLoadable } from "recoil"
 
+import FormCard from "@/components/EditProject/FormCard"
 import Frame from "@/components/Frame"
-import LoginCard from "@/components/Home/LoginCard"
-import ProjectTable from "@/components/Home/ProjectTable"
 import Loading from "@/components/Loading"
+import NoAuthCard from "@/components/NoAuthCard"
 import { authenticatedSelector } from "@/store/token"
 
-export default function Home() {
+export default function EditProject() {
   const { showBoundary } = useErrorBoundary()
-  const auth = useRecoilValueLoadable(authenticatedSelector)
 
+  const auth = useRecoilValueLoadable(authenticatedSelector)
   if (auth.state === "hasError") {
     showBoundary(auth.contents)
   }
@@ -23,12 +23,17 @@ export default function Home() {
     )
   }
 
+  if (auth.contents === false) {
+    return (
+      <Frame noAuth>
+        <NoAuthCard sx={{ mt: "1.5rem" }} />
+      </Frame>
+    )
+  }
+
   return (
     <Frame>
-      {(auth.state === "hasValue" && !!auth.contents)
-        ? <ProjectTable sx={{ mt: "1.5rem" }} />
-        : <LoginCard sx={{ mt: "1.5rem" }} />
-      }
+      <FormCard sx={{ mt: "1.5rem" }} />
     </Frame>
   )
 }

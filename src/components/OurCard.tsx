@@ -13,7 +13,7 @@ export default function OurCard({ sx, children }: OurCardProps) {
       ...sx,
       borderRadius: 2,
       boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
-    }} >
+    }}>
       <Box sx={{ p: "1.5rem 3rem" }}>
         {children}
       </Box>

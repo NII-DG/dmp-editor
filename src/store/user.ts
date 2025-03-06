@@ -8,7 +8,7 @@ export interface User {
   fullName: string
   timezone: string
   email: string
-  selfUrl: string
+  grdmProfileUrl: string
   profileImage: string
 }
 
@@ -17,7 +17,7 @@ export const toUser = (response: GetMeResponse): User => ({
   fullName: response.data.attributes.full_name,
   timezone: response.data.attributes.timezone,
   email: response.data.attributes.email,
-  selfUrl: response.data.links.self,
+  grdmProfileUrl: response.data.links.html,
   profileImage: response.data.links.profile_image,
 })
 

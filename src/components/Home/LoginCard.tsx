@@ -55,12 +55,12 @@ export default function LoginCard({ sx }: LoginCardProps) {
         component="h1"
         children="GRDM との接続"
       />
-      <Typography sx={{ mt: "0.5rem" }} >
+      <Typography sx={{ mt: "0.5rem" }}>
         {"GakuNin RDM の Token を取得し、入力してください。"}
         <br />
         {"この Token は、GakuNin RDM との疎通に用いられ、この Browser の Local Storage のみに保存されます。"}
       </Typography>
-      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1.5rem", mt: "1.5rem" }} >
+      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1.5rem", mt: "1.5rem" }}>
         <FormControl sx={{ flexGrow: 1, maxWidth: "400px" }}>
           <InputLabel children="GRDM Token" />
           <OutlinedInput
@@ -104,6 +104,15 @@ export default function LoginCard({ sx }: LoginCardProps) {
           />
           {" から取得できます。"}
           {"下の画像を参考にしてください。"}
+          <br />
+          {"また、"}
+          <Link
+            href="https://support.rdm.nii.ac.jp/usermanual/Setting-06/"
+            target="_blank"
+            rel="noopener noreferrer"
+            children="パーソナルアクセストークン | GakuNin RDM サポートポータル"
+          />
+          {" も参照してください。"}
         </Typography>
         <Box
           component="img"
