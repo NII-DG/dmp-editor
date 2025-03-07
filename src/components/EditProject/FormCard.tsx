@@ -12,7 +12,7 @@ import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
 import OurCard from "@/components/OurCard"
 import { writeDmpFile, createProject, DMP_PROJECT_PREFIX, ProjectInfo } from "@/grdmClient"
-import { dmpAtom, formValidationStateAtom, formValidSelector, projectNameAtom, submitTriggerAtom } from "@/store/dmp"
+import { dmpAtom, formValidSelector, projectNameAtom, submitTriggerAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { User } from "@/store/user"
 
@@ -32,19 +32,23 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
   const projectName = useRecoilValue(projectNameAtom) // No prefix
   const dmp = useRecoilValue(dmpAtom)
   const isFormValid = useRecoilValue(formValidSelector)
-  const formValidationState = useRecoilValue(formValidationStateAtom)
   const setSubmitTrigger = useSetRecoilState(submitTriggerAtom)
-  const [submitRequested, setSubmitRequested] = useState<boolean>(false)
+  const [submitRequested, setSubmitRequested] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSave = () => {
     setSubmitTrigger((prev) => prev + 1)
-    setSubmitRequested(true)
+    setTimeout(() => {
+      setSubmitRequested(true)
+    }, 500)
   }
 
   useEffect(() => {
     if (!submitRequested) return
-    if (!isFormValid) return
+    if (!isFormValid) {
+      setSubmitRequested(false)
+      return
+    }
 
     setSubmitting(true)
 
@@ -77,7 +81,7 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
     }
 
     setSubmitRequested(false)
-  }, [formValidationState]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [submitRequested]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <OurCard sx={{ ...sx }}>
@@ -93,31 +97,21 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
         <Divider sx={{ my: "1.5rem" }} />
         <ProjectInfoSection />
         <Divider sx={{ my: "1.5rem" }} />
-        <PersonInfoSection user={user} />
+        <PersonInfoSection isNew={isNew} user={user} />
         <Divider sx={{ my: "1.5rem" }} />
-        <DataInfoSection />
+        <DataInfoSection isNew={isNew} />
       </Box>
-      <Box sx={{ display: "flex", flexDirection: "row", mt: "1.5rem", gap: "1.5rem" }}>
+      <Divider sx={{ my: "1.5rem" }} />
+      <Box sx={{ display: "flex", flexDirection: "row", mt: "1.5rem" }}>
         <Button
           variant="contained"
-          color="primary"
+          color="secondary"
           onClick={handleSave}
           sx={{
             textTransform: "none",
             width: "160px",
           }}
           children="GRDM に保存する"
-          disabled={!isFormValid || submitting}
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => alert("TODO: not implemented yet")}
-          sx={{
-            textTransform: "none",
-            width: "160px",
-          }}
-          children="DMP を出力する"
           disabled={!isFormValid || submitting}
         />
       </Box>

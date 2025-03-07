@@ -27,7 +27,7 @@ export default function NoAuthCardProps({ sx }: NoAuthCardProps) {
         <Box>
           <Button
             variant="contained"
-            color="primary"
+            color="secondary"
             onClick={() => navigate("/")}
             children="ホームへ戻る"
           />

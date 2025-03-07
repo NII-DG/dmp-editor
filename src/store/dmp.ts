@@ -26,6 +26,16 @@ export interface FormValidationState {
     dateCreated: boolean
     dateModified: boolean
   }
+  projectInfo: {
+    fundingAgency: boolean
+    programName: boolean
+    programCode: boolean
+    projectCode: boolean
+    projectName: boolean
+    adoptionYear: boolean
+    startYear: boolean
+    endYear: boolean
+  }
 }
 
 export const initFormValidationState = (): FormValidationState => ({
@@ -36,10 +46,22 @@ export const initFormValidationState = (): FormValidationState => ({
     dateCreated: true,
     dateModified: true,
   },
+  projectInfo: {
+    fundingAgency: true,
+    programName: true,
+    programCode: true,
+    projectCode: true,
+    projectName: true,
+    adoptionYear: true,
+    startYear: true,
+    endYear: true,
+  },
 })
 
 export const isFormValid = (formState: FormValidationState): boolean => {
-  return formState.projectName && Object.values(formState.metadata).every(value => value)
+  return formState.projectName &&
+    Object.values(formState.metadata).every(value => value) &&
+    Object.values(formState.projectInfo).every(value => value)
 }
 
 export const formValidationStateAtom = atom<FormValidationState>({

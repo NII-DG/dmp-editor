@@ -46,7 +46,7 @@ export default function ErrorPage({ error, resetErrorBoundary }: ErrorPageProps)
           <Box>
             <Button
               variant="contained"
-              color="primary"
+              color="secondary"
               onClick={resetErrorBoundary}
               children={"再試行する"}
             />

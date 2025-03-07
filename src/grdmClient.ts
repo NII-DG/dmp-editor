@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { Dmp } from "@/dmp"
+import { Dmp, dmpSchema } from "@/dmp"
 
 export const DMP_FILE_NAME = "dmp-project.json"
 export const DMP_PROJECT_PREFIX = "dmp-project-"
@@ -71,6 +71,16 @@ export interface GetMeResponse {
     id: string
     attributes: {
       full_name: string
+      given_name: string
+      family_name: string
+      social: {
+        orcid: string
+        researcherId: string
+      }
+      employment: {
+        institution_ja: string
+        department_ja: string
+      }[]
       timezone: string
       email: string
     }
@@ -86,6 +96,16 @@ export const getMeResponseSchema = z.object({
     id: z.string(),
     attributes: z.object({
       full_name: z.string(),
+      given_name: z.string(),
+      family_name: z.string(),
+      social: z.object({
+        orcid: z.string(),
+        researcherId: z.string(),
+      }),
+      employment: z.array(z.object({
+        institution_ja: z.string(),
+        department_ja: z.string(),
+      })),
       timezone: z.string(),
       email: z.string(),
     }),
@@ -642,7 +662,7 @@ export const readDmpFile = async (token: string, projectId: string): Promise<{
   try {
     const { content, node } = await readFile(token, projectId, DMP_FILE_NAME)
     return {
-      dmp: JSON.parse(content) as Dmp, // TODO: validate DMP schema
+      dmp: dmpSchema.parse(JSON.parse(content)),
       node,
     }
   } catch (error) {

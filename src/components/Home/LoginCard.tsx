@@ -86,6 +86,7 @@ export default function LoginCard({ sx }: LoginCardProps) {
         <Button
           variant="contained"
           sx={{ width: "120px", mb: "1.65rem" }}
+          color="secondary"
           onClick={handleAuthenticate}
           disabled={isAuthenticating || !!isAuthenticated}
         >

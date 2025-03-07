@@ -4,7 +4,13 @@ import { createTheme } from "@mui/material/styles"
 export const theme = createTheme({
   palette: {
     primary: {
+      main: colors.indigo[500],
+    },
+    secondary: {
       main: colors.indigo[400],
+    },
+    info: {
+      main: colors.grey[800],
     },
     text: {
       primary: colors.grey[900],

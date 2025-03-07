@@ -31,7 +31,7 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
               {"あなたの GRDM アカウントに紐づく DMP Project 一覧です。"}
             </Typography>
             <Box sx={{ mt: "1rem" }}>
-              <Button variant="contained" color="primary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
+              <Button variant="contained" color="secondary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
                 {"新規 DMP Project を作成する"}
               </Button>
             </Box>
@@ -73,7 +73,7 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
                       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "10%" }}>
                         <Button
                           variant="outlined"
-                          color="primary"
+                          color="secondary"
                           size="small"
                           onClick={() => navigate(`/projects/${project.id}`)}
                         >
@@ -90,7 +90,7 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
           <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
             <Typography children="Project がありません。" />
             <Box sx={{ mt: "1rem" }}>
-              <Button variant="contained" color="primary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
+              <Button variant="contained" color="secondary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
                 {"新規 DMP Project を作成する"}
               </Button>
             </Box>

@@ -3,6 +3,7 @@ import { useErrorBoundary } from "react-error-boundary"
 import { useParams } from "react-router"
 import { useRecoilValue, useRecoilValueLoadable, useSetRecoilState } from "recoil"
 
+import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
 import FormCard from "@/components/EditProject/FormCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
@@ -82,6 +83,7 @@ export default function EditProject({ isNew }: EditProjectProps) {
         user={user.contents!}
         project={project}
       />
+      <ExportDmpCard sx={{ mt: "1.5rem" }} />
     </Frame>
   )
 }

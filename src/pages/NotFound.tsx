@@ -24,7 +24,7 @@ export default function NotFound() {
           <Box>
             <Button
               variant="contained"
-              color="primary"
+              color="secondary"
               onClick={() => navigate("/")}
               children="ホームへ戻る"
             />
