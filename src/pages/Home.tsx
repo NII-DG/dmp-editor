@@ -7,41 +7,36 @@ import LoginCard from "@/components/Home/LoginCard"
 import ProjectTable from "@/components/Home/ProjectTable"
 import Loading from "@/components/Loading"
 import { listingProjects, ProjectInfo, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { authenticatedSelector, tokenAtom } from "@/store/token"
+import { authSelector, tokenAtom } from "@/store/token"
 import { userSelector } from "@/store/user"
 
 export default function Home() {
   const { showBoundary } = useErrorBoundary()
-  const auth = useRecoilValueLoadable(authenticatedSelector)
+  const auth = useRecoilValueLoadable(authSelector)
   const user = useRecoilValueLoadable(userSelector)
   const token = useRecoilValue(tokenAtom)
-  const [projects, setProjects] = useState<ProjectInfo[] | undefined>(undefined)
-
-  const isLogin = (auth.state === "hasValue" && !!auth.contents) &&
-    (user.state === "hasValue" && !!user.contents)
-  const loadingData = projects === undefined
+  const [projects, setProjects] = useState<ProjectInfo[]>([])
+  const [loadingProjects, setLoadingProjects] = useState(false)
+  const isLogin = auth.state === "hasValue" && auth.contents
+  const isLoading = user.state === "loading" || loadingProjects
 
   // Load projects
   useEffect(() => {
-    if (isLogin) {
-      listingProjects(token).then((projects) => {
-        setProjects(projects.filter(project => project.title.startsWith(DMP_PROJECT_PREFIX)))
-      }).catch((error) => {
-        showBoundary(error)
-      })
+    if (token !== "") {
+      setLoadingProjects(true)
+      listingProjects(token)
+        .then((projects) => {
+          setProjects(projects.filter(project => project.title.startsWith(DMP_PROJECT_PREFIX)))
+        })
+        .catch(showBoundary)
+        .finally(() => setLoadingProjects(false))
     }
-  }, [isLogin]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (auth.state === "hasError") showBoundary(auth.contents)
-  if (user.state === "hasError") showBoundary(user.contents)
-
-  if (!isLogin || loadingData) {
+  if (isLoading) {
     return (
       <Frame noAuth>
-        <Loading msg={!isLogin ?
-          "認証中..." :
-          "プロジェクト情報を取得中..."
-        } />
+        <Loading msg={"プロジェクト情報を取得中..."} />
       </Frame>
     )
   }

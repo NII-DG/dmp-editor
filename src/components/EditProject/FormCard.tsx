@@ -1,3 +1,4 @@
+import { SaveOutlined } from "@mui/icons-material"
 import { Box, Typography, Button, Divider } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useEffect, useState } from "react"
@@ -109,10 +110,11 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
           onClick={handleSave}
           sx={{
             textTransform: "none",
-            width: "160px",
+            width: "180px",
           }}
           children="GRDM に保存する"
           disabled={!isFormValid || submitting}
+          startIcon={<SaveOutlined />}
         />
       </Box>
     </OurCard>

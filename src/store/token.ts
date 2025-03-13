@@ -9,18 +9,9 @@ export const tokenAtom = atom<string>({
   effects: [localStorageEffect("dmp-editor.token")],
 })
 
-// for caching the authentication status
-export const authenticatedAtom = atom<boolean | null>({
-  key: "dmp-editor.authenticated",
-  default: null,
-})
-
-export const authenticatedSelector = selector<boolean>({
-  key: "dmp-editor.authenticatedSelector",
+export const authSelector = selector<boolean>({
+  key: "dmp-editor.authSelector",
   get: async ({ get }) => {
-    const cachedAuth = get(authenticatedAtom)
-    if (cachedAuth !== null) return cachedAuth
-
     const token = get(tokenAtom)
     if (token === "") return false
 
@@ -30,8 +21,5 @@ export const authenticatedSelector = selector<boolean>({
       console.error("Failed to authenticate with GRDM", error)
       return false
     }
-  },
-  set: ({ set }, newValue) => {
-    set(authenticatedAtom, newValue)
   },
 })

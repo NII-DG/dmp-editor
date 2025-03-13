@@ -10,7 +10,7 @@ import Loading from "@/components/Loading"
 import NoAuthCard from "@/components/NoAuthCard"
 import { FilesNode, ProjectInfo, getProjectInfo, readDmpFile } from "@/grdmClient"
 import { dmpAtom } from "@/store/dmp"
-import { authenticatedSelector, tokenAtom } from "@/store/token"
+import { authSelector, tokenAtom } from "@/store/token"
 import { userSelector } from "@/store/user"
 
 interface EditProjectProps {
@@ -19,21 +19,20 @@ interface EditProjectProps {
 
 export default function EditProject({ isNew }: EditProjectProps) {
   const { showBoundary } = useErrorBoundary()
-  const auth = useRecoilValueLoadable(authenticatedSelector)
+  const auth = useRecoilValueLoadable(authSelector)
   const user = useRecoilValueLoadable(userSelector)
-  const projectId = useParams<{ projectId: string }>().projectId!
   const token = useRecoilValue(tokenAtom)
+  const projectId = useParams<{ projectId: string }>().projectId!
   const [project, setProject] = useState<ProjectInfo | undefined>(undefined)
   const [dmpFileNode, setDmpFileNode] = useState<FilesNode | undefined>(undefined)
   const setDmp = useSetRecoilState(dmpAtom)
 
-  const isLogin = (auth.state === "hasValue" && !!auth.contents) &&
-    (user.state === "hasValue" && !!user.contents)
+  const isLogin = auth.state === "hasValue" && auth.contents
   const loadingData = !isNew && (project === undefined || dmpFileNode === undefined)
 
   // Load project info and DMP file
   useEffect(() => {
-    if (!isNew && isLogin) {
+    if (!isNew && !!token) {
       getProjectInfo(token, projectId)
         .then((project) => {
           setProject(project)
@@ -42,34 +41,24 @@ export default function EditProject({ isNew }: EditProjectProps) {
               setDmp(dmp)
               setDmpFileNode(node)
             })
-            .catch((error) => {
-              showBoundary(error)
-            })
+            .catch(showBoundary)
         })
-        .catch((error) => {
-          showBoundary(error)
-        })
+        .catch(showBoundary)
     }
-  }, [isLogin]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (auth.state === "hasError") showBoundary(auth.contents)
-  if (user.state === "hasError") showBoundary(user.contents)
-
-  if (!isLogin || loadingData) {
+  if (!isLogin) {
     return (
       <Frame noAuth>
-        <Loading msg={!isLogin ?
-          "認証中..." :
-          "プロジェクト情報を取得中..."
-        } />
+        <NoAuthCard sx={{ mt: "1.5rem" }} />
       </Frame>
     )
   }
 
-  if (auth.contents === false) {
+  if (loadingData) {
     return (
       <Frame noAuth>
-        <NoAuthCard sx={{ mt: "1.5rem" }} />
+        <Loading msg={"プロジェクト情報を取得中..."} />
       </Frame>
     )
   }

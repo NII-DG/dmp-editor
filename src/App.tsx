@@ -4,6 +4,7 @@ import { ErrorBoundary } from "react-error-boundary"
 import { BrowserRouter, Routes, Route } from "react-router"
 import { RecoilRoot } from "recoil"
 
+import AuthHelper from "@/components/AuthHelper"
 import EditProject from "@/pages/EditProject"
 import ErrorPage from "@/pages/ErrorPage"
 import Home from "@/pages/Home"
@@ -17,12 +18,14 @@ export default function App() {
         <CssBaseline />
         <RecoilRoot>
           <ErrorBoundary FallbackComponent={ErrorPage} onReset={() => window.location.reload()}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/projects/new" element={<EditProject isNew />} />
-              <Route path="/projects/:projectId" element={<EditProject />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AuthHelper>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/projects/new" element={<EditProject isNew />} />
+                <Route path="/projects/:projectId" element={<EditProject />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthHelper>
           </ErrorBoundary>
         </RecoilRoot>
       </ThemeProvider>

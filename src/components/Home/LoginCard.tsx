@@ -1,4 +1,4 @@
-import { Visibility, VisibilityOff } from "@mui/icons-material"
+import { LockOutlined, VerifiedUserOutlined, Visibility, VisibilityOff } from "@mui/icons-material"
 import { Box, Button, Divider, FormControl, FormHelperText, IconButton, InputAdornment, InputLabel, Link, OutlinedInput, Typography } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
@@ -8,7 +8,7 @@ import tokenEg1Url from "@/assets/token-eg-1.png"
 import tokenEg2Url from "@/assets/token-eg-2.png"
 import OurCard from "@/components/OurCard"
 import { authenticateGrdm } from "@/grdmClient"
-import { tokenAtom, authenticatedSelector } from "@/store/token"
+import { tokenAtom } from "@/store/token"
 
 export interface LoginCardProps {
   sx?: SxProps
@@ -18,12 +18,11 @@ export default function LoginCard({ sx }: LoginCardProps) {
   const [showToken, setShowToken] = useState(false)
   const [inputToken, setInputToken] = useState("") // for form input
   const setToken = useSetRecoilState(tokenAtom)
-  const setAuth = useSetRecoilState(authenticatedSelector)
   const [error, setError] = useState<string | null>(null)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
 
-  const handleAuthenticate = async () => {
+  const handleAuthenticate = () => {
     setError(null)
     if (inputToken === "") {
       setError("Token を入力してください。")
@@ -31,21 +30,20 @@ export default function LoginCard({ sx }: LoginCardProps) {
     }
 
     setIsAuthenticating(true)
-    try {
-      const result = await authenticateGrdm(inputToken)
-      setIsAuthenticated(result)
-      if (result) {
-        setToken(inputToken)
-        setAuth(true)
-      } else {
-        setError("認証に失敗しました。Token を確認してください。")
-      }
-    } catch (error) {
-      setError("認証中にエラーが発生しました。")
-      console.error("Failed to authenticate with GRDM", error)
-    } finally {
-      setIsAuthenticating(false)
-    }
+    authenticateGrdm(inputToken)
+      .then((result) => {
+        if (result) {
+          setIsAuthenticated(true)
+          setToken(inputToken)
+        } else {
+          setError("認証に失敗しました。Token を確認してください。")
+        }
+      })
+      .catch((error) => {
+        setError("認証中にエラーが発生しました。")
+        console.error("Failed to authenticate with GRDM", error)
+      })
+      .finally(() => setIsAuthenticating(false))
   }
 
   return (
@@ -89,6 +87,7 @@ export default function LoginCard({ sx }: LoginCardProps) {
           color="secondary"
           onClick={handleAuthenticate}
           disabled={isAuthenticating || !!isAuthenticated}
+          startIcon={isAuthenticated ? <VerifiedUserOutlined /> : <LockOutlined />}
         >
           {isAuthenticated ? "認証済み" : isAuthenticating ? "認証中..." : "認証"}
         </Button>

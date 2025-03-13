@@ -1,4 +1,4 @@
-import { ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutline, EditOutlined } from "@mui/icons-material"
+import { AddOutlined, ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutline, EditOutlined } from "@mui/icons-material"
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Select, FormControl, Chip, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState, useEffect, useRef } from "react"
@@ -235,7 +235,13 @@ export default function PersonInfoSection({ sx, isNew, user }: PersonInfoSection
           </Table>
         </TableContainer>
 
-        <Button variant="contained" color="secondary" children="担当者を追加する" onClick={() => handleOpen()} sx={{ width: "160px", mt: "1rem" }} />
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => handleOpen()} sx={{ width: "180px", mt: "1rem" }}
+          children="担当者を追加する"
+          startIcon={<AddOutlined />}
+        />
 
         <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
           <DialogTitle

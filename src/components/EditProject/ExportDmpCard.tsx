@@ -1,3 +1,4 @@
+import { DownloadingOutlined } from "@mui/icons-material"
 import { Typography, Button } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useEffect, useState } from "react"
@@ -60,11 +61,12 @@ export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
         onClick={handleDownload}
         sx={{
           textTransform: "none",
-          width: "160px",
+          width: "180px",
           mt: "1.5rem",
         }}
         children="DMP を出力する"
         disabled={!isFormValid || downloading}
+        startIcon={<DownloadingOutlined />}
       />
     </OurCard>
   )

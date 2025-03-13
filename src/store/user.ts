@@ -1,7 +1,7 @@
 import { selector } from "recoil"
 
 import { getMe, GetMeResponse } from "@/grdmClient"
-import { tokenAtom, authenticatedSelector } from "@/store/token"
+import { tokenAtom, authSelector } from "@/store/token"
 
 export interface User {
   grdmId: string
@@ -40,7 +40,7 @@ export const toUser = (response: GetMeResponse): User => {
 export const userSelector = selector<User | null>({
   key: "dmp-editor.userSelector",
   get: ({ get }) => {
-    const authenticated = get(authenticatedSelector)
+    const authenticated = get(authSelector)
     if (!authenticated) return null
 
     const token = get(tokenAtom)

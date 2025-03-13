@@ -3,10 +3,10 @@ import { Button, Menu, MenuItem, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
-import { useRecoilState, useSetRecoilState, useRecoilValueLoadable } from "recoil"
+import { useRecoilState, useRecoilValueLoadable } from "recoil"
 
 import AppHeaderBase from "@/components/AppHeaderBase"
-import { tokenAtom, authenticatedSelector } from "@/store/token"
+import { tokenAtom } from "@/store/token"
 import { userSelector } from "@/store/user"
 
 interface AppHeaderProps {
@@ -21,7 +21,6 @@ export default function AppHeader({ sx }: AppHeaderProps) {
     showBoundary(user.contents)
   }
   const [token, setToken] = useRecoilState(tokenAtom)
-  const setAuth = useSetRecoilState(authenticatedSelector)
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null)
   const [copied, setCopied] = useState(false)
@@ -35,7 +34,6 @@ export default function AppHeader({ sx }: AppHeaderProps) {
 
   const signOut = () => {
     setToken("")
-    setAuth(false)
   }
 
   return (

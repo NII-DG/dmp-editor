@@ -1,4 +1,4 @@
-import { OpenInNew } from "@mui/icons-material"
+import { EditOutlined, OpenInNew } from "@mui/icons-material"
 import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useNavigate } from "react-router"
@@ -73,9 +73,10 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
                       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "10%" }}>
                         <Button
                           variant="outlined"
-                          color="secondary"
+                          color="primary"
                           size="small"
                           onClick={() => navigate(`/projects/${project.id}`)}
+                          startIcon={<EditOutlined />}
                         >
                           {"編集"}
                         </Button>

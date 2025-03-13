@@ -1,9 +1,10 @@
-import { ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutline, EditOutlined } from "@mui/icons-material"
+import { AddOutlined, ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutline, EditOutlined } from "@mui/icons-material"
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Select, FormControl, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState, useEffect, useRef } from "react"
 import { useRecoilState } from "recoil"
 
+import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { accessRights, AccessRights, DataInfo, DataType, dataType, initDataInfo, listingPersonNames, researchField, ResearchField } from "@/dmp"
@@ -238,7 +239,13 @@ export default function DataInfoSection({ sx, isNew }: DataInfoSectionProps) {
           </Table>
         </TableContainer>
 
-        <Button variant="contained" color="secondary" children="データを追加する" onClick={() => handleOpen()} sx={{ width: "160px", mt: "1rem" }} />
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => handleOpen()} sx={{ width: "180px", mt: "1rem" }}
+          children="データを追加する"
+          startIcon={<AddOutlined />}
+        />
 
         <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
           <DialogTitle
@@ -292,7 +299,16 @@ export default function DataInfoSection({ sx, isNew }: DataInfoSectionProps) {
             </FormControl>
 
             <FormControl fullWidth>
-              <OurFormLabel label="管理対象データの取得または収集方法" />
+              <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+                <OurFormLabel label="管理対象データの取得または収集方法" />
+                <HelpChip
+                  text={
+                    <>
+                      {"想定されている関連する標準や方法、品質保証、データの組織化 (命名規則、バージョン管理、フォルダ構造) 等を記述してください。"}
+                    </>
+                  }
+                />
+              </Box>
               <TextField
                 variant="outlined"
                 value={currentDataInfo.acquisitionMethod}
@@ -342,7 +358,16 @@ export default function DataInfoSection({ sx, isNew }: DataInfoSectionProps) {
             </FormControl>
 
             <FormControl fullWidth>
-              <OurFormLabel label="概略データ量" />
+              <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+                <OurFormLabel label="概略データ量" />
+                <HelpChip
+                  text={
+                    <>
+                      {"管理対象データの概ねのデータ容量を以下から選択。システムからデータ容量の値を出力できる場合は、データ容量の値そのものをセットしてもよい。"}
+                    </>
+                  }
+                />
+              </Box>
               <TextField
                 variant="outlined"
                 value={currentDataInfo.dataSize}
@@ -501,7 +526,7 @@ export default function DataInfoSection({ sx, isNew }: DataInfoSectionProps) {
             </FormControl>
 
             <FormControl fullWidth>
-              <OurFormLabel label="リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)" />
+              <OurFormLabel label="リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)" required />
               <TextField
                 variant="outlined"
                 value={currentDataInfo.repository}
