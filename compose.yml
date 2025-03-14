@@ -1,6 +1,6 @@
 services:
   app:
-    images: ghcr.io/NII-DG/dmp-editor:0.1.0
+    images: ghcr.io/nii-dg/dmp-editor:0.1.0
     container_name: dmp-editor
     environment:
       - DMP_EDITOR_HOST=0.0.0.0
