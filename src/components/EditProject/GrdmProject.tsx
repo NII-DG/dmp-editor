@@ -1,13 +1,13 @@
 import { OpenInNew } from "@mui/icons-material"
 import { Box, FormControl, TextField, Typography, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useErrorBoundary } from "react-error-boundary"
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"
 
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import { ProjectInfo, listingProjects, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { projectNameAtom, formValidationStateAtom, submitTriggerAtom } from "@/store/dmp"
+import { projectNameAtom, formTouchedStateAtom, formValidationState, existingProjectNamesAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
 
@@ -21,10 +21,17 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
   const { showBoundary } = useErrorBoundary()
   const token = useRecoilValue(tokenAtom)
   const [projectName, setProjectName] = useRecoilState(projectNameAtom)
-  const setFormValidationState = useSetRecoilState(formValidationStateAtom)
-  const [existsProjectNames, setExistsProjectNames] = useState<string[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const submitTrigger = useRecoilValue(submitTriggerAtom)
+  const errors = useRecoilValue(formValidationState)
+  const error = errors.projectName
+  const setTouched = useSetRecoilState(formTouchedStateAtom)
+  const setExistsProjectNames = useSetRecoilState(existingProjectNamesAtom)
+
+  const updateTouch = () => {
+    setTouched(prev => ({
+      ...prev,
+      projectName: true,
+    }))
+  }
 
   // Initialize existsProjectNames
   useEffect(() => {
@@ -36,41 +43,16 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
           .filter(project => project.title.startsWith(DMP_PROJECT_PREFIX))
           .map(project => project.title),
       )
-    }).catch((error) => {
-      showBoundary(error)
-    })
+    }).catch(showBoundary)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const validateProjectName = (value: string) => {
-    if (existsProjectNames.includes(`${DMP_PROJECT_PREFIX}${value}`)) {
-      setError("同じ名前の GRDM プロジェクトが既に存在します。")
-      setFormValidationState(prev => ({ ...prev, projectName: false }))
-      return
-    }
-    if (value === "") {
-      setError("プロジェクト名を入力してください。")
-      setFormValidationState(prev => ({ ...prev, projectName: false }))
-      return
-    }
-
-    setError(null)
-    setFormValidationState(prev => ({ ...prev, projectName: true }))
-  }
 
   const changeProjectName = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!isNew) return
 
     const newValue = e.target.value
     setProjectName(newValue)
-    validateProjectName(newValue)
+    updateTouch()
   }
-
-  // Click submit button
-  useEffect(() => {
-    if (!isNew) return
-    if (submitTrigger === 0) return
-    validateProjectName(projectName)
-  }, [submitTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Box sx={{ ...sx }}>
@@ -91,6 +73,7 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
               variant="outlined"
               value={projectName}
               onChange={changeProjectName}
+              onBlur={updateTouch}
               error={!!error}
               helperText={error ?
                 error :

@@ -22,6 +22,8 @@ export interface DmpMetadata {
   dateModified: string // DMP最終更新年月日 YYYY-MM-DD
 }
 
+export const dmpMetadataKeys: (keyof DmpMetadata)[] = ["revisionType", "submissionDate", "dateCreated", "dateModified"]
+
 export const dmpMetadataSchema = z.object({
   revisionType: z.enum(["新規", "修正", "更新"]),
   submissionDate: z.string(),
@@ -42,6 +44,8 @@ export interface ProjectInfo {
   startYear?: string | null // 事業開始年度
   endYear?: string | null // 事業終了年度
 }
+
+export const projectInfoKeys: (keyof ProjectInfo)[] = ["fundingAgency", "programName", "programCode", "projectCode", "projectName", "adoptionYear", "startYear", "endYear"]
 
 export const projectInfoSchema = z.object({
   fundingAgency: z.string(),

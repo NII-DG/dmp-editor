@@ -13,7 +13,7 @@ import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
 import OurCard from "@/components/OurCard"
 import { writeDmpFile, createProject, DMP_PROJECT_PREFIX, ProjectInfo } from "@/grdmClient"
-import { dmpAtom, formValidSelector, projectNameAtom, submitTriggerAtom } from "@/store/dmp"
+import { dmpAtom, formTouchedStateAtom, formValidationState, formValidState, initFormTouchedState, projectNameAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { User } from "@/store/user"
 
@@ -32,57 +32,42 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
   const token = useRecoilValue(tokenAtom)
   const projectName = useRecoilValue(projectNameAtom) // No prefix
   const dmp = useRecoilValue(dmpAtom)
-  const isFormValid = useRecoilValue(formValidSelector)
-  const setSubmitTrigger = useSetRecoilState(submitTriggerAtom)
-  const [submitRequested, setSubmitRequested] = useState(false)
+  const setTouched = useSetRecoilState(formTouchedStateAtom)
+  const errors = useRecoilValue(formValidationState)
+  const isFormValid = useRecoilValue(formValidState)
+  const [submitTrigger, setSubmitTrigger] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const handleSave = () => {
-    setSubmitTrigger((prev) => prev + 1)
-    setTimeout(() => {
-      setSubmitRequested(true)
-    }, 500)
+    setTouched(initFormTouchedState(true))
+    setSubmitTrigger(true)
   }
 
   useEffect(() => {
-    if (!submitRequested) return
-    if (!isFormValid) {
-      setSubmitRequested(false)
-      return
-    }
+    if (!submitTrigger) return
 
-    setSubmitting(true)
-
-    if (isNew) {
-      createProject(token, `${DMP_PROJECT_PREFIX}${projectName}`)
-        .then((project) => {
-          writeDmpFile(token, project.id, dmp)
-            .then(() => {
-              setSubmitting(false)
-              navigate(`/projects/${project.id}`)
-            })
-            .catch((error) => {
-              setSubmitting(false)
-              showBoundary(error)
-            })
-        })
-        .catch((error) => {
-          setSubmitting(false)
-          showBoundary(error)
-        })
+    // submitTrigger の変更に伴い、errors が更新される
+    if (isFormValid) {
+      setSubmitting(true)
+      if (isNew) {
+        createProject(token, `${DMP_PROJECT_PREFIX}${projectName}`)
+          .then((project) => {
+            writeDmpFile(token, project.id, dmp)
+              .then(() => navigate(`/projects/${project.id}`))
+              .catch(showBoundary)
+          })
+          .catch(showBoundary)
+          .finally(() => setSubmitting(false))
+      } else {
+        writeDmpFile(token, projectId, dmp)
+          .then(() => navigate(`/projects/${projectId}`))
+          .catch(showBoundary)
+          .finally(() => setSubmitting(false))
+      }
     } else {
-      writeDmpFile(token, projectId, dmp)
-        .then(() => {
-          setSubmitting(false)
-        })
-        .catch((error) => {
-          setSubmitting(false)
-          showBoundary(error)
-        })
+      setSubmitTrigger(false)
     }
-
-    setSubmitRequested(false)
-  }, [submitRequested]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [submitTrigger, errors]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <OurCard sx={{ ...sx }}>

@@ -1,6 +1,6 @@
 import { atom, selector } from "recoil"
 
-import { Dmp, initDmp } from "@/dmp"
+import { Dmp, DmpMetadata, dmpMetadataKeys, initDmp, ProjectInfo, projectInfoKeys } from "@/dmp"
 
 // === DMP ===
 
@@ -16,65 +16,87 @@ export const projectNameAtom = atom<string>({
   default: "",
 })
 
+export const existingProjectNamesAtom = atom<string[]>({
+  key: "dmp-editor.existingProjectNames",
+  default: [] as string[],
+})
+
 // === Form Validation ===
 
-export interface FormValidationState {
-  projectName: boolean
-  metadata: {
-    revisionType: boolean
-    submissionDate: boolean
-    dateCreated: boolean
-    dateModified: boolean
-  }
-  projectInfo: {
-    fundingAgency: boolean
-    programName: boolean
-    programCode: boolean
-    projectCode: boolean
-    projectName: boolean
-    adoptionYear: boolean
-    startYear: boolean
-    endYear: boolean
-  }
+type FormErrorsKeys = "projectName" | keyof DmpMetadata | keyof ProjectInfo
+const formErrorsKeys: FormErrorsKeys[] = ["projectName", ...dmpMetadataKeys, ...projectInfoKeys]
+export type FormErrors = Record<FormErrorsKeys, string | null>
+export type FormTouched = Record<FormErrorsKeys, boolean>
+
+export const initFormErrorsState = (): FormErrors => {
+  return (formErrorsKeys).reduce((acc, key) => {
+    acc[key] = null
+    return acc
+  }, {} as FormErrors)
 }
 
-export const initFormValidationState = (): FormValidationState => ({
-  projectName: true,
-  metadata: {
-    revisionType: true,
-    submissionDate: true,
-    dateCreated: true,
-    dateModified: true,
-  },
-  projectInfo: {
-    fundingAgency: true,
-    programName: true,
-    programCode: true,
-    projectCode: true,
-    projectName: true,
-    adoptionYear: true,
-    startYear: true,
-    endYear: true,
-  },
+export const initFormTouchedState = (state = false): FormTouched => {
+  return (formErrorsKeys).reduce((acc, key) => {
+    acc[key] = state
+    return acc
+  }, {} as FormTouched)
+}
+
+export type FormValues = DmpMetadata[keyof DmpMetadata] | ProjectInfo[keyof ProjectInfo] | string
+
+export const validateProjectName = (value: string, existingProjectNames: string[]): string | null => {
+  if (existingProjectNames.includes(value)) return "同じ名前の GRDM プロジェクトが既に存在します。"
+  if (value === "") return "プロジェクト名を入力してください"
+  return null
+}
+
+const projectInfoRequiredKeys: (keyof ProjectInfo)[] = ["fundingAgency", "projectCode", "projectName"]
+
+export const validate = (key: FormErrorsKeys, value: FormValues): string | null => {
+  if (dmpMetadataKeys.includes(key as keyof DmpMetadata)) {
+    if (value === "") return "必須項目です"
+  }
+  if (projectInfoKeys.includes(key as keyof ProjectInfo)) {
+    if (projectInfoRequiredKeys.includes(key as keyof ProjectInfo) && value === "") {
+      return "必須項目です"
+    }
+  }
+  return null
+}
+
+export const formTouchedStateAtom = atom<FormTouched>({
+  key: "dmp-editor.formTouchedState",
+  default: initFormTouchedState(),
 })
 
-export const isFormValid = (formState: FormValidationState): boolean => {
-  return formState.projectName &&
-    Object.values(formState.metadata).every(value => value) &&
-    Object.values(formState.projectInfo).every(value => value)
-}
-
-export const formValidationStateAtom = atom<FormValidationState>({
+export const formValidationState = selector<FormErrors>({
   key: "dmp-editor.formValidationState",
-  default: initFormValidationState(),
+  get: ({ get }) => {
+    const dmp = get(dmpAtom)
+    const touched = get(formTouchedStateAtom)
+    const errors: FormErrors = initFormErrorsState()
+    for (const key of formErrorsKeys) {
+      if (!touched[key]) continue
+      let error: string | null = null
+      if (key === "projectName") {
+        error = validateProjectName(get(projectNameAtom), get(existingProjectNamesAtom))
+      } else if (dmpMetadataKeys.includes(key as keyof DmpMetadata)) {
+        const value = dmp.metadata[key as keyof DmpMetadata]
+        error = validate(key, value)
+      } else if (projectInfoKeys.includes(key as keyof ProjectInfo)) {
+        const value = dmp.projectInfo[key as keyof ProjectInfo]
+        error = validate(key, value)
+      }
+      errors[key] = error
+    }
+    return errors
+  },
 })
 
-export const formValidSelector = selector<boolean>({
-  key: "dmp-editor.formValidSelector",
-  get: ({ get }) => isFormValid(get(formValidationStateAtom)),
-})
-
-export const submitTriggerAtom = atom<number>({
-  key: "dmp-editor.submitTrigger",
-  default: 0,
+export const formValidState = selector<boolean>({
+  key: "dmp-editor.formValidState",
+  get: ({ get }) => {
+    const errors = get(formValidationState)
+    return Object.values(errors).every((error) => error === null)
+  },
 })
