@@ -1,0 +1,19 @@
+services:
+  app:
+    images: ghcr.io/NII-DG/dmp-editor:0.1.0
+    container_name: dmp-editor
+    environment:
+      - DMP_EDITOR_HOST=0.0.0.0
+      - DMP_EDITOR_PORT=3000
+    ports:
+      - 127.0.0.1:3000:3000
+    working_dir: /app
+    command: [ "npm", "run", "preview" ]
+    init: true
+    networks:
+      - dmp-editor-network
+
+networks:
+  dmp-editor-network:
+    name: dmp-editor-network
+    external: true
