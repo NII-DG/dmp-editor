@@ -1,50 +1,44 @@
-# React + TypeScript + Vite
+# DMP-editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Data Management Plan (DMP)** を **GakuNin RDM** と連携して保存・編集できる Web アプリケーション
 
-Currently, two official plugins are available:
+## Deploy
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+ローカル環境で DMP-editor を実行するには、以下のコマンドを実行します。
 
-## Expanding the ESLint configuration
+```bash
+docker network create dmp-editor-network
+docker compose up -d
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+# ブラウザで localhost:3000 にアクセス
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## Development
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+開発環境のセットアップ:
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```bash
+docker network create dmp-editor-network
+docker compose -f compose.dev.yml up -d --build
+docker compose exec app npm run dev
 ```
+
+## Release
+
+新しいバージョンをリリースするには、以下のスクリプトを実行します。
+
+```bash
+bash release.sh <version>
+
+# 1. 設定ファイルのバージョンを更新
+# 2. `git commit`, `git tag`, `git push`
+# 3. GitHub Actions により以下が自動生成・公開される:
+#    - Docker イメージ
+#    - GitHub Release
+#    - GitHub Pages
+```
+
+## License
+
+This project is licensed under [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0).
+See the [LICENSE](./LICENSE) file for details.
