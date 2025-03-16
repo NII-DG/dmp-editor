@@ -13,7 +13,7 @@ import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
 import OurCard from "@/components/OurCard"
 import { writeDmpFile, createProject, DMP_PROJECT_PREFIX, ProjectInfo } from "@/grdmClient"
-import { dmpAtom, formTouchedStateAtom, formValidationState, formValidState, initFormTouchedState, projectNameAtom } from "@/store/dmp"
+import { dmpAtom, formTouchedStateAtom, formValidState, initFormTouchedState, projectNameAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { User } from "@/store/user"
 
@@ -33,7 +33,6 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
   const projectName = useRecoilValue(projectNameAtom) // No prefix
   const dmp = useRecoilValue(dmpAtom)
   const setTouched = useSetRecoilState(formTouchedStateAtom)
-  const errors = useRecoilValue(formValidationState)
   const isFormValid = useRecoilValue(formValidState)
   const [submitTrigger, setSubmitTrigger] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -44,9 +43,9 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
   }
 
   useEffect(() => {
+    // Use useEffect to re-evaluate the form validation (isFormValid) when submitTrigger changes
     if (!submitTrigger) return
 
-    // submitTrigger の変更に伴い、errors が更新される
     if (isFormValid) {
       setSubmitting(true)
       if (isNew) {
@@ -64,10 +63,9 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
           .catch(showBoundary)
           .finally(() => setSubmitting(false))
       }
-    } else {
-      setSubmitTrigger(false)
     }
-  }, [submitTrigger, errors]) // eslint-disable-line react-hooks/exhaustive-deps
+    setSubmitTrigger(false)
+  }, [submitTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <OurCard sx={{ ...sx }}>

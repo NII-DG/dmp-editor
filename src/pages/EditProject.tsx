@@ -28,7 +28,8 @@ export default function EditProject({ isNew }: EditProjectProps) {
   const setDmp = useSetRecoilState(dmpAtom)
 
   const isLogin = auth.state === "hasValue" && auth.contents
-  const loadingData = !isNew && (project === undefined || dmpFileNode === undefined)
+  const loadingData = user.state !== "hasValue" ||
+    (!isNew && (project === undefined || dmpFileNode === undefined))
 
   // Load project info and DMP file
   useEffect(() => {

@@ -38,13 +38,11 @@ const formData: FormData[] = [
     required: false,
     width: "480px",
     type: "text",
-    helpChip: (
-      <>
-        {"NISTEP 体系的番号一覧 ("}
-        <Link href="https://www.nistep.go.jp/taikei" target="_blank" rel="noopener" children="https://www.nistep.go.jp/taikei" />
-        {") に掲載されている「事業・制度名」を記載してください。"}
-      </>
-    ),
+    helpChip: (<>
+      {"NISTEP 体系的番号一覧 ("}
+      <Link href="https://www.nistep.go.jp/taikei" target="_blank" rel="noopener" children="https://www.nistep.go.jp/taikei" />
+      {") に掲載されている「事業・制度名」を記載してください。"}
+    </>),
   },
   {
     key: "programCode",
@@ -105,8 +103,8 @@ export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
   const updateValue = <K extends keyof ProjectInfo>(key: K, value: ProjectInfo[K]) => {
     setDmp((prev) => ({
       ...prev,
-      metadata: {
-        ...prev.metadata,
+      projectInfo: {
+        ...prev.projectInfo,
         [key]: value,
       },
     }))
@@ -131,7 +129,7 @@ export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
           <FormControl key={key} fullWidth>
             <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
               <OurFormLabel label={label} required={required} />
-              {helpChip && <HelpChip sx={{ ml: "0.5rem" }} text={helpChip} />}
+              {helpChip && <HelpChip text={helpChip} />}
             </Box>
             <TextField
               fullWidth
@@ -146,6 +144,7 @@ export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
               onBlur={() => updateTouched(key)}
               type={type === "date" ? "date" : "text"}
               select={type === "select"}
+              size="small"
             >
               {type === "select" &&
                 options!.map((option) => (

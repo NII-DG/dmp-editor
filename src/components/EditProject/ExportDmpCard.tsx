@@ -6,7 +6,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil"
 
 import OurCard from "@/components/OurCard"
 import { exportToExcel } from "@/dmp"
-import { dmpAtom, formValidState, formTouchedStateAtom, formValidationState, initFormTouchedState } from "@/store/dmp"
+import { dmpAtom, formValidState, formTouchedStateAtom, initFormTouchedState } from "@/store/dmp"
 
 export interface ExportDmpCardProps {
   sx?: SxProps
@@ -15,7 +15,6 @@ export interface ExportDmpCardProps {
 export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
   const dmp = useRecoilValue(dmpAtom)
   const setTouched = useSetRecoilState(formTouchedStateAtom)
-  const errors = useRecoilValue(formValidationState)
   const isFormValid = useRecoilValue(formValidState)
   const [submitTrigger, setSubmitTrigger] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -26,6 +25,7 @@ export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
   }
 
   useEffect(() => {
+    // Use useEffect to re-evaluate the form validation (isFormValid) when submitTrigger changes
     if (!submitTrigger) return
 
     // submitTrigger の変更に伴い、errors が更新される
@@ -40,11 +40,9 @@ export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
       a.click()
       URL.revokeObjectURL(url)
       setDownloading(false)
-      setSubmitTrigger(false)
-    } else {
-      setSubmitTrigger(false)
     }
-  }, [submitTrigger, errors]) // eslint-disable-line react-hooks/exhaustive-deps
+    setSubmitTrigger(false)
+  }, [submitTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <OurCard sx={{ ...sx }}>

@@ -3,6 +3,7 @@ import { SxProps } from "@mui/system"
 import { useEffect } from "react"
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil"
 
+import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { revisionType, todayString, DmpMetadata } from "@/dmp"
@@ -17,9 +18,10 @@ interface FormData {
   label: string
   required: boolean
   width: string
-  helperText: string
+  helperText?: string
   type: "text" | "date" | "select"
   options?: string[]
+  helpChip?: React.ReactNode
 }
 
 const formData: FormData[] = [
@@ -28,7 +30,6 @@ const formData: FormData[] = [
     label: "種別",
     required: true,
     width: "480px",
-    helperText: "",
     type: "select",
     options: [...revisionType],
   },
@@ -37,7 +38,6 @@ const formData: FormData[] = [
     label: "提出日",
     required: true,
     width: "480px",
-    helperText: "",
     type: "date",
   },
   {
@@ -45,7 +45,6 @@ const formData: FormData[] = [
     label: "DMP 作成年月日",
     required: true,
     width: "480px",
-    helperText: "",
     type: "date",
   },
   {
@@ -53,7 +52,6 @@ const formData: FormData[] = [
     label: "DMP 最終更新年月日",
     required: true,
     width: "480px",
-    helperText: "",
     type: "date",
   },
 ]
@@ -88,9 +86,12 @@ export default function DmpMetadataSection({ sx }: DmpMetadataSectionProps) {
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="DMP 作成・更新情報" />
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "1rem" }}>
-        {formData.map(({ key, label, required, width, helperText, type, options }) => (
+        {formData.map(({ key, label, required, width, helperText, type, options, helpChip }) => (
           <FormControl key={key} fullWidth>
-            <OurFormLabel label={label} required={required} />
+            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+              <OurFormLabel label={label} required={required} />
+              {helpChip && <HelpChip text={helpChip} />}
+            </Box>
             <TextField
               fullWidth
               variant="outlined"
@@ -104,6 +105,7 @@ export default function DmpMetadataSection({ sx }: DmpMetadataSectionProps) {
               onBlur={() => updateTouched(key)}
               type={type === "date" ? "date" : "text"}
               select={type === "select"}
+              size="small"
             >
               {type === "select" &&
                 options!.map((option) => (

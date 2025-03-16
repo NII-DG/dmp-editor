@@ -72,6 +72,8 @@ export interface PersonInfo {
   affiliation: string // 所属機関
 }
 
+export const personInfoKeys: (keyof PersonInfo)[] = ["role", "lastName", "firstName", "eRadResearcherId", "orcid", "affiliation"]
+
 export const personInfoSchema = z.object({
   role: z.array(z.enum(personRole)),
   lastName: z.string(),
@@ -89,6 +91,10 @@ export type DataType = "データセット" | "集計データ" | "臨床試験�
 export const dataType = ["データセット", "集計データ", "臨床試験データ", "編集データ", "符号化データ", "実験データ", "ゲノムデータ", "地理空間データ", "実験ノート", "測定・評価データ", "観測データ", "記録データ", "シミュレーションデータ", "調査データ"] as const
 export const dataTypeSchema = z.enum(dataType)
 
+export type HasSensitiveData = "有" | "無"
+export const hasSensitiveData = ["有", "無"] as const
+export const hasSensitiveDataSchema = z.enum(hasSensitiveData)
+
 export type AccessRights = "公開" | "共有" | "非共有・非公開" | "公開期間猶予"
 export const accessRights = ["公開", "共有", "非共有・非公開", "公開期間猶予"] as const
 export const accessRightsSchema = z.enum(accessRights)
@@ -103,7 +109,7 @@ export interface DataInfo {
   dataType: DataType // データ種別
   dataSize?: string | null // 概略データ量
   reuseInformation?: string | null // 再利用を可能にするための情報
-  hasSensitiveData?: boolean | null // 機微情報の有無: 有 | 無
+  hasSensitiveData?: HasSensitiveData | null // 機微情報の有無
   sensitiveDataPolicy?: string | null // 機微情報がある場合の取扱い方針
   usagePolicy: string // 管理対象データの利活用・提供方針 (研究活動時)
   repositoryInformation: string // リポジトリ情報 (研究活動時)
@@ -121,6 +127,8 @@ export interface DataInfo {
   dataStoragePeriod?: string | null // 研究データの保存期間 (研究事業終了後)
 }
 
+export const dataInfoKeys: (keyof DataInfo)[] = ["dataName", "publicationDate", "description", "acquisitionMethod", "researchField", "dataType", "dataSize", "reuseInformation", "hasSensitiveData", "sensitiveDataPolicy", "usagePolicy", "repositoryInformation", "backupLocation", "publicationPolicy", "accessRights", "plannedPublicationDate", "repository", "dataCreator", "dataManagementAgency", "rorId", "dataManager", "dataManagerContact", "dataStorageLocation", "dataStoragePeriod"]
+
 export const dataInfoSchema = z.object({
   dataName: z.string(),
   publicationDate: z.string(),
@@ -130,7 +138,7 @@ export const dataInfoSchema = z.object({
   dataType: z.enum(dataType),
   dataSize: z.string().nullable().optional(),
   reuseInformation: z.string().nullable().optional(),
-  hasSensitiveData: z.boolean().nullable().optional(),
+  hasSensitiveData: z.enum(hasSensitiveData).nullable().optional(),
   sensitiveDataPolicy: z.string().nullable().optional(),
   usagePolicy: z.string(),
   repositoryInformation: z.string(),
