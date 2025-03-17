@@ -13,7 +13,7 @@ import theme from "@/theme"
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={DMP_EDITOR_BASE}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <RecoilRoot>

@@ -4,7 +4,7 @@ import { Dmp, dmpSchema } from "@/dmp"
 
 export const DMP_FILE_NAME = "dmp-project.json"
 export const DMP_PROJECT_PREFIX = "dmp-project-"
-const GRDM_API_BASE_URL = "https://api.rdm.nii.ac.jp/v2/"
+const GRDM_API_BASE_URL = "https://api.rdm.nii.ac.jp/v2"
 
 const fetchWithRetry = async (
   url: string,
