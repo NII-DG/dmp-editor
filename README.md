@@ -2,6 +2,8 @@
 
 **Data Management Plan (DMP)** を **GakuNin RDM** と連携して保存・編集できる Web アプリケーション
 
+**GitHub Pages 環境として、[https://nii-dg.github.io/dmp-editor/](https://nii-dg.github.io/dmp-editor/) が用意されています。**
+
 ## Deploy
 
 ローカル環境で DMP-editor を実行するには、以下のコマンドを実行します。
