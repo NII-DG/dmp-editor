@@ -74,8 +74,8 @@ export interface GetMeResponse {
       given_name: string
       family_name: string
       social: {
-        orcid: string
-        researcherId: string
+        orcid?: string | null
+        researcherId?: string | null
       }
       employment: {
         institution_ja: string
@@ -99,8 +99,8 @@ export const getMeResponseSchema = z.object({
       given_name: z.string(),
       family_name: z.string(),
       social: z.object({
-        orcid: z.string(),
-        researcherId: z.string(),
+        orcid: z.string().optional().nullable(),
+        researcherId: z.string().optional().nullable(),
       }),
       employment: z.array(z.object({
         institution_ja: z.string(),
