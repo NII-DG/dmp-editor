@@ -322,7 +322,7 @@ export const exportToExcel = (dmp: Dmp): Blob => {
     data.dataType,
     data.dataSize ?? "",
     data.reuseInformation ?? "",
-    (data.hasSensitiveData === undefined || data.hasSensitiveData === null) ? "" : data.hasSensitiveData ? "有" : "無",
+    data.hasSensitiveData ?? "",
     data.sensitiveDataPolicy ?? "",
     data.usagePolicy,
     data.repositoryInformation,
