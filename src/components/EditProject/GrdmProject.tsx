@@ -7,7 +7,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"
 
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import { ProjectInfo, listingProjects, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { projectNameAtom, formTouchedStateAtom, formValidationState, existingProjectNamesAtom } from "@/store/dmp"
+import { grdmProjectNameAtom, formTouchedStateAtom, formValidationState, existingGrdmProjectNamesAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
 
@@ -20,16 +20,16 @@ export interface GrdmProjectProps {
 export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
   const { showBoundary } = useErrorBoundary()
   const token = useRecoilValue(tokenAtom)
-  const [projectName, setProjectName] = useRecoilState(projectNameAtom)
+  const [grdmProjectName, setGrdmProjectName] = useRecoilState(grdmProjectNameAtom)
   const errors = useRecoilValue(formValidationState)
-  const error = errors.projectName
+  const error = errors.grdmProjectName
   const setTouched = useSetRecoilState(formTouchedStateAtom)
-  const setExistsProjectNames = useSetRecoilState(existingProjectNamesAtom)
+  const setExistsGrdmProjectNames = useSetRecoilState(existingGrdmProjectNamesAtom)
 
   const updateTouch = () => {
     setTouched(prev => ({
       ...prev,
-      projectName: true,
+      grdmProjectName: true,
     }))
   }
 
@@ -38,7 +38,7 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
     if (!isNew) return
 
     listingProjects(token).then((projects) => {
-      setExistsProjectNames(
+      setExistsGrdmProjectNames(
         projects
           .filter(project => project.title.startsWith(DMP_PROJECT_PREFIX))
           .map(project => project.title),
@@ -50,7 +50,7 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
     if (!isNew) return
 
     const newValue = e.target.value
-    setProjectName(newValue)
+    setGrdmProjectName(newValue)
     updateTouch()
   }
 
@@ -71,7 +71,7 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
             />
             <TextField
               variant="outlined"
-              value={projectName}
+              value={grdmProjectName}
               onChange={changeProjectName}
               onBlur={updateTouch}
               error={!!error}

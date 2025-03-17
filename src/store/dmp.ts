@@ -11,20 +11,20 @@ export const dmpAtom = atom<Dmp>({
 
 // === Project Name ===
 
-export const projectNameAtom = atom<string>({
-  key: "dmp-editor.projectName",
+export const grdmProjectNameAtom = atom<string>({
+  key: "dmp-editor.grdmProjectName",
   default: "",
 })
 
-export const existingProjectNamesAtom = atom<string[]>({
-  key: "dmp-editor.existingProjectNames",
+export const existingGrdmProjectNamesAtom = atom<string[]>({
+  key: "dmp-editor.existingGrdmProjectNames",
   default: [] as string[],
 })
 
 // === Form Validation ===
 
-type FormErrorsKeys = "projectName" | keyof DmpMetadata | keyof ProjectInfo
-const formErrorsKeys: FormErrorsKeys[] = ["projectName", ...dmpMetadataKeys, ...projectInfoKeys]
+type FormErrorsKeys = "grdmProjectName" | keyof DmpMetadata | keyof ProjectInfo
+const formErrorsKeys: FormErrorsKeys[] = ["grdmProjectName", ...dmpMetadataKeys, ...projectInfoKeys]
 export type FormErrors = Record<FormErrorsKeys, string | null>
 export type FormTouched = Record<FormErrorsKeys, boolean>
 
@@ -44,9 +44,9 @@ export const initFormTouchedState = (state = false): FormTouched => {
 
 export type FormValues = DmpMetadata[keyof DmpMetadata] | ProjectInfo[keyof ProjectInfo] | string
 
-export const validateProjectName = (value: string, existingProjectNames: string[]): string | null => {
-  if (existingProjectNames.includes(value)) return "同じ名前の GRDM プロジェクトが既に存在します。"
-  if (value === "") return "プロジェクト名を入力してください"
+export const validateGrdmProjectName = (value: string | null | undefined, existingProjectNames: string[]): string | null => {
+  if (existingProjectNames.includes(value ?? "")) return "同じ名前の GRDM プロジェクトが既に存在します。"
+  if (!value) return "プロジェクト名を入力してください"
   return null
 }
 
@@ -54,10 +54,10 @@ const projectInfoRequiredKeys: (keyof ProjectInfo)[] = ["fundingAgency", "projec
 
 export const validate = (key: FormErrorsKeys, value: FormValues): string | null => {
   if (dmpMetadataKeys.includes(key as keyof DmpMetadata)) {
-    if (value === "") return "必須項目です"
+    if (!value) return "必須項目です"
   }
   if (projectInfoKeys.includes(key as keyof ProjectInfo)) {
-    if (projectInfoRequiredKeys.includes(key as keyof ProjectInfo) && value === "") {
+    if (projectInfoRequiredKeys.includes(key as keyof ProjectInfo) && !value) {
       return "必須項目です"
     }
   }
@@ -78,8 +78,8 @@ export const formValidationState = selector<FormErrors>({
     for (const key of formErrorsKeys) {
       if (!touched[key]) continue
       let error: string | null = null
-      if (key === "projectName") {
-        error = validateProjectName(get(projectNameAtom), get(existingProjectNamesAtom))
+      if (key === "grdmProjectName") {
+        error = validateGrdmProjectName(get(grdmProjectNameAtom), get(existingGrdmProjectNamesAtom))
       } else if (dmpMetadataKeys.includes(key as keyof DmpMetadata)) {
         const value = dmp.metadata[key as keyof DmpMetadata]
         error = validate(key, value)
