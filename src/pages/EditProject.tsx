@@ -10,7 +10,7 @@ import Loading from "@/components/Loading"
 import NoAuthCard from "@/components/NoAuthCard"
 import { initDmp } from "@/dmp"
 import { FilesNode, ProjectInfo, getProjectInfo, readDmpFile } from "@/grdmClient"
-import { dmpAtom, formTouchedStateAtom, grdmProjectNameAtom, initFormTouchedState } from "@/store/dmp"
+import { dmpAtom, formTouchedStateAtom, grdmProjectNameAtom, initFormTouchedState, isNewAtom } from "@/store/dmp"
 import { authSelector, tokenAtom } from "@/store/token"
 import { userSelector } from "@/store/user"
 
@@ -29,6 +29,7 @@ export default function EditProject({ isNew }: EditProjectProps) {
   const setDmp = useSetRecoilState(dmpAtom)
   const setGrdmProjectName = useSetRecoilState(grdmProjectNameAtom)
   const setFormTouchedState = useSetRecoilState(formTouchedStateAtom)
+  const setIsNew = useSetRecoilState(isNewAtom)
 
   const isLogin = auth.state === "hasValue" && auth.contents
   const loadingData = user.state !== "hasValue" ||
@@ -36,25 +37,29 @@ export default function EditProject({ isNew }: EditProjectProps) {
 
   // Load project info and DMP file
   useEffect(() => {
-    if (!isNew && !!token) {
-      getProjectInfo(token, projectId)
-        .then((project) => {
-          setProject(project)
-          readDmpFile(token, projectId)
-            .then(({ dmp, node }) => {
-              setDmp(dmp)
-              setGrdmProjectName("")
-              setFormTouchedState(initFormTouchedState())
-              setDmpFileNode(node)
-            })
-            .catch(showBoundary)
-        })
-        .catch(showBoundary)
-    }
     if (isNew) {
+      // Initialize form state
       setDmp(initDmp())
       setGrdmProjectName("")
       setFormTouchedState(initFormTouchedState())
+      setIsNew(true)
+    } else {
+      setGrdmProjectName("")
+      setFormTouchedState(initFormTouchedState())
+      setIsNew(false)
+      if (token) {
+        getProjectInfo(token, projectId)
+          .then((project) => {
+            setProject(project)
+            readDmpFile(token, projectId)
+              .then(({ dmp, node }) => {
+                setDmp(dmp)
+                setDmpFileNode(node)
+              })
+              .catch(showBoundary)
+          })
+          .catch(showBoundary)
+      }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

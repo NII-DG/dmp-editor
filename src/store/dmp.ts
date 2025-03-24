@@ -23,6 +23,11 @@ export const existingGrdmProjectNamesAtom = atom<string[]>({
 
 // === Form Validation ===
 
+export const isNewAtom = atom<boolean>({
+  key: "dmp-editor.isNew",
+  default: false,
+})
+
 type FormErrorsKeys = "grdmProjectName" | keyof DmpMetadata | keyof ProjectInfo
 const formErrorsKeys: FormErrorsKeys[] = ["grdmProjectName", ...dmpMetadataKeys, ...projectInfoKeys]
 export type FormErrors = Record<FormErrorsKeys, string | null>
@@ -74,11 +79,12 @@ export const formValidationState = selector<FormErrors>({
   get: ({ get }) => {
     const dmp = get(dmpAtom)
     const touched = get(formTouchedStateAtom)
+    const isNew = get(isNewAtom)
     const errors: FormErrors = initFormErrorsState()
     for (const key of formErrorsKeys) {
       if (!touched[key]) continue
       let error: string | null = null
-      if (key === "grdmProjectName") {
+      if (isNew && key === "grdmProjectName") {
         error = validateGrdmProjectName(get(grdmProjectNameAtom), get(existingGrdmProjectNamesAtom))
       } else if (dmpMetadataKeys.includes(key as keyof DmpMetadata)) {
         const value = dmp.metadata[key as keyof DmpMetadata]
