@@ -8,8 +8,9 @@ import FormCard from "@/components/EditProject/FormCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import NoAuthCard from "@/components/NoAuthCard"
+import { initDmp } from "@/dmp"
 import { FilesNode, ProjectInfo, getProjectInfo, readDmpFile } from "@/grdmClient"
-import { dmpAtom } from "@/store/dmp"
+import { dmpAtom, formTouchedStateAtom, grdmProjectNameAtom, initFormTouchedState } from "@/store/dmp"
 import { authSelector, tokenAtom } from "@/store/token"
 import { userSelector } from "@/store/user"
 
@@ -26,6 +27,8 @@ export default function EditProject({ isNew }: EditProjectProps) {
   const [project, setProject] = useState<ProjectInfo | undefined>(undefined)
   const [dmpFileNode, setDmpFileNode] = useState<FilesNode | undefined>(undefined)
   const setDmp = useSetRecoilState(dmpAtom)
+  const setGrdmProjectName = useSetRecoilState(grdmProjectNameAtom)
+  const setFormTouchedState = useSetRecoilState(formTouchedStateAtom)
 
   const isLogin = auth.state === "hasValue" && auth.contents
   const loadingData = user.state !== "hasValue" ||
@@ -40,11 +43,18 @@ export default function EditProject({ isNew }: EditProjectProps) {
           readDmpFile(token, projectId)
             .then(({ dmp, node }) => {
               setDmp(dmp)
+              setGrdmProjectName("")
+              setFormTouchedState(initFormTouchedState())
               setDmpFileNode(node)
             })
             .catch(showBoundary)
         })
         .catch(showBoundary)
+    }
+    if (isNew) {
+      setDmp(initDmp())
+      setGrdmProjectName("")
+      setFormTouchedState(initFormTouchedState())
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

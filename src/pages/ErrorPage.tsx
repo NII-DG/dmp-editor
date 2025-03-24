@@ -2,6 +2,7 @@ import { Box, Typography, Paper, Button } from "@mui/material"
 
 import Frame from "@/components/Frame"
 import OurCard from "@/components/OurCard"
+import { getErrorChain } from "@/utils"
 
 interface ErrorPageProps {
   error: Error
@@ -9,6 +10,23 @@ interface ErrorPageProps {
 }
 
 export default function ErrorPage({ error, resetErrorBoundary }: ErrorPageProps) {
+  const errorChain = getErrorChain(error)
+  const errorMessage = errorChain.reduce((acc, err, idx) => {
+    if (idx === 0) return err.message
+    return `${acc}\n\nCaused by: ${err.message}`
+  }, "")
+  const errorStack = errorChain.reduce((acc, err, idx) => {
+    if (idx === 0) return err.stack || err.message
+    return `${acc}\n\nCaused by: ${err.stack || err.message}`
+  }, "")
+
+  const resetWithCacheClear = () => {
+    if (typeof window !== "undefined") {
+      localStorage.clear()
+      resetErrorBoundary()
+    }
+  }
+
   return (
     <Frame noAuth>
       <OurCard sx={{ mt: "1.5rem" }}>
@@ -29,7 +47,7 @@ export default function ErrorPage({ error, resetErrorBoundary }: ErrorPageProps)
             </Typography>
             <Paper variant="outlined" sx={{ mt: "0.5rem", p: "0.5rem 1rem" }}>
               <Box sx={{ fontFamily: "monospace", overflowX: "auto" }}>
-                <pre>{error.message}</pre>
+                <pre>{errorMessage}</pre>
               </Box>
             </Paper>
           </Box>
@@ -39,16 +57,23 @@ export default function ErrorPage({ error, resetErrorBoundary }: ErrorPageProps)
             </Typography>
             <Paper variant="outlined" sx={{ mt: "0.5rem", p: "0.5rem 1rem" }}>
               <Box sx={{ fontFamily: "monospace", overflowX: "auto" }}>
-                <pre>{error.stack}</pre>
+                <pre>{errorStack}</pre>
               </Box>
             </Paper>
           </Box>
-          <Box>
+          <Box sx={{ display: "flex", gap: "1.5rem" }}>
             <Button
               variant="contained"
               color="secondary"
               onClick={resetErrorBoundary}
               children={"再試行する"}
+            />
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={resetWithCacheClear}
+              children={"Cache をクリアして再試行する"}
+              sx={{ textTransform: "none" }}
             />
           </Box>
         </Box>

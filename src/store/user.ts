@@ -12,7 +12,7 @@ export interface User {
   researcherId: string | null
   affiliation: string | null
   timezone: string
-  email: string
+  email?: string | null
   grdmProfileUrl: string
   profileImage: string
 }

@@ -1,5 +1,5 @@
 import { SaveOutlined } from "@mui/icons-material"
-import { Box, Typography, Button, Divider } from "@mui/material"
+import { Box, Typography, Button, Divider, Alert, Snackbar } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useEffect, useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
@@ -16,6 +16,7 @@ import { writeDmpFile, createProject, DMP_PROJECT_PREFIX, ProjectInfo } from "@/
 import { dmpAtom, formTouchedStateAtom, formValidState, initFormTouchedState, grdmProjectNameAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { User } from "@/store/user"
+import { getErrorChain } from "@/utils"
 
 export interface FormCardProps {
   sx?: SxProps
@@ -36,6 +37,8 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
   const isFormValid = useRecoilValue(formValidState)
   const [submitTrigger, setSubmitTrigger] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
+  const snackbarOpen = alertMessage !== null
 
   const handleSave = () => {
     setTouched(initFormTouchedState(true))
@@ -55,7 +58,14 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
               .then(() => navigate(`/projects/${project.id}`))
               .catch(showBoundary)
           })
-          .catch(showBoundary)
+          .catch((error) => {
+            const errorMessages = getErrorChain(error).map((err) => err.message)
+            if (errorMessages.some((msg) => msg.includes("HTTP Error: 403"))) {
+              setAlertMessage("GRDM Token に、プロジェクトを作成する権限 (\"osf.full_write\") が存在しないようです。ご確認よろしくお願いします。")
+            } else {
+              showBoundary(error)
+            }
+          })
           .finally(() => setSubmitting(false))
       } else {
         writeDmpFile(token, projectId, dmp)
@@ -100,6 +110,15 @@ export default function FormCard({ sx, isNew, projectId, user, project }: FormCa
           startIcon={<SaveOutlined />}
         />
       </Box>
+
+      <Snackbar
+        open={snackbarOpen}
+        onClose={() => setAlertMessage(null)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        autoHideDuration={10000}
+      >
+        <Alert onClose={() => setAlertMessage(null)} severity="error" sx={{ width: "100%" }} children={alertMessage} />
+      </Snackbar>
     </OurCard>
   )
 }

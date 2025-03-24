@@ -82,7 +82,7 @@ export interface GetMeResponse {
         department_ja: string
       }[]
       timezone: string
-      email: string
+      email?: string | null
     }
     links: {
       html: string
@@ -107,7 +107,7 @@ export const getMeResponseSchema = z.object({
         department_ja: z.string(),
       })),
       timezone: z.string(),
-      email: z.string(),
+      email: z.string().optional().nullable(),
     }),
     links: z.object({
       html: z.string(),
