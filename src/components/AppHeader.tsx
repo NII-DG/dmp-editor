@@ -11,17 +11,17 @@ import { userSelector } from "@/store/user"
 
 interface AppHeaderProps {
   sx?: SxProps
+  noAuth?: boolean
 }
 
-export default function AppHeader({ sx }: AppHeaderProps) {
+export default function AppHeader({ sx, noAuth }: AppHeaderProps) {
   const { showBoundary } = useErrorBoundary()
-
   const user = useRecoilValueLoadable(userSelector)
   if (user.state === "hasError") {
     showBoundary(user.contents)
   }
-  const [token, setToken] = useRecoilState(tokenAtom)
 
+  const [token, setToken] = useRecoilState(tokenAtom)
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -36,20 +36,24 @@ export default function AppHeader({ sx }: AppHeaderProps) {
     setToken("")
   }
 
+  if (noAuth) {
+    return <AppHeaderBase sx={sx} />
+  }
+
   return (
     <AppHeaderBase
       sx={sx}
       leftChildren={null}
       rightChildren={
-        (user.state === "hasValue" && user.contents) ? (
+        user.state === "hasValue" && user.contents ? (
           <>
             <Button
               variant="text"
-              sx={{ textTransform: " none", color: colors.grey[400], "&:hover": { color: "white" } }}
+              sx={{ textTransform: "none", color: colors.grey[400], "&:hover": { color: "white" } }}
               onClick={(e) => setMenuAnchorEl(e.currentTarget)}
             >
               <AccountCircleOutlined sx={{ mr: "0.5rem" }} />
-              {`${user.contents.fullName}`}
+              {user.contents.fullName}
               <ArrowDropDownOutlined />
             </Button>
             <Menu
@@ -65,20 +69,24 @@ export default function AppHeader({ sx }: AppHeaderProps) {
                 sx={{ minWidth: "220px" }}
               >
                 <OpenInNew sx={{ mr: "0.5rem" }} />
-                {"Go to GRDM Profile"}
+                Go to GRDM Profile
               </MenuItem>
               <MenuItem onClick={handleCopy} sx={{ minWidth: "220px" }}>
-                {copied ? <>
-                  <Check sx={{ mr: "0.5rem" }} />
-                  {"Copied!"}
-                </> : <>
-                  <FileCopyOutlined sx={{ mr: "0.5rem" }} />
-                  {"Copy Access Token"}
-                </>}
+                {copied ? (
+                  <>
+                    <Check sx={{ mr: "0.5rem" }} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <FileCopyOutlined sx={{ mr: "0.5rem" }} />
+                    Copy Access Token
+                  </>
+                )}
               </MenuItem>
               <MenuItem onClick={signOut} sx={{ minWidth: "220px" }}>
                 <LogoutOutlined sx={{ mr: "0.5rem" }} />
-                {"Sign Out"}
+                Sign Out
               </MenuItem>
             </Menu>
           </>

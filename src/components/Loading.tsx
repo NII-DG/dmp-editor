@@ -2,9 +2,10 @@ import { Box, CircularProgress, Typography } from "@mui/material"
 
 export interface LoadingProps {
   msg?: string
+  fullScreen?: boolean
 }
 
-export default function Loading({ msg }: LoadingProps) {
+export default function Loading({ msg, fullScreen }: LoadingProps) {
   return (
     <Box
       sx={{
@@ -12,7 +13,7 @@ export default function Loading({ msg }: LoadingProps) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        height: "60vh",
+        height: fullScreen ? "100vh" : "60vh",
         textAlign: "center",
         bgcolor: "background.default",
       }}

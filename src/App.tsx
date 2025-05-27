@@ -6,10 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router"
 import { RecoilRoot } from "recoil"
 
 import AuthHelper from "@/components/AuthHelper"
+import StatusPage from "@/components/StatusPage"
 import EditProject from "@/pages/EditProject"
-import ErrorPage from "@/pages/ErrorPage"
 import Home from "@/pages/Home"
-import NotFound from "@/pages/NotFound"
 import { queryClient } from "@/queryClient"
 import theme from "@/theme"
 
@@ -20,13 +19,18 @@ export default function App() {
         <CssBaseline />
         <RecoilRoot>
           <QueryClientProvider client={queryClient}>
-            <ErrorBoundary FallbackComponent={ErrorPage} onReset={() => window.location.reload()}>
+            <ErrorBoundary
+              fallbackRender={({ error, resetErrorBoundary }) => (
+                <StatusPage type="error" error={error} resetErrorBoundary={resetErrorBoundary} />
+              )}
+              onReset={() => window.location.reload()}
+            >
               <AuthHelper>
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/projects/new" element={<EditProject isNew />} />
                   <Route path="/projects/:projectId" element={<EditProject />} />
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="*" element={<StatusPage type="notfound" />} />
                 </Routes>
               </AuthHelper>
             </ErrorBoundary>
