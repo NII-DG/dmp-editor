@@ -28,7 +28,7 @@ export default function EditProject({ isNew }: EditProjectProps) {
   const params = useParams<{ projectId: string }>()
   const projectId = params.projectId!
   const token = useRecoilValue(tokenAtom)
-  const userQuery = useUser(token)
+  const userQuery = useUser()
 
   const setDmp = useSetRecoilState(dmpAtom)
   const setGrdmProjectName = useSetRecoilState(grdmProjectNameAtom)

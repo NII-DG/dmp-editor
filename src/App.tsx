@@ -6,9 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router"
 import { RecoilRoot } from "recoil"
 
 import AuthHelper from "@/components/AuthHelper"
-import StatusPage from "@/components/StatusPage"
 import EditProject from "@/pages/EditProject"
 import Home from "@/pages/Home"
+import StatusPage from "@/pages/StatusPage"
 import { queryClient } from "@/queryClient"
 import theme from "@/theme"
 
