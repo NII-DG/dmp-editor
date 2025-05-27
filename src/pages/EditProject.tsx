@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 import { useRecoilValue, useSetRecoilState } from "recoil"
 
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
@@ -25,7 +25,6 @@ interface EditProjectProps {
 }
 
 export default function EditProject({ isNew }: EditProjectProps) {
-  const navigate = useNavigate()
   const params = useParams<{ projectId: string }>()
   const projectId = params.projectId!
   const token = useRecoilValue(tokenAtom)
@@ -87,16 +86,21 @@ export default function EditProject({ isNew }: EditProjectProps) {
   }
   if (error) throw error
 
+  // Ensure user data is present
+  if (!userQuery.data) {
+    throw new Error("User not authenticated")
+  }
+
   return (
     <Frame>
       <FormCard
         sx={{ mt: "1.5rem" }}
         isNew={!!isNew}
         projectId={projectId}
-        user={userQuery.data}
+        user={userQuery.data!}
         project={projectQuery.data!}
       />
-      <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data} />
+      <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data!} />
       <ExportDmpCard sx={{ mt: "1.5rem" }} />
     </Frame>
   )

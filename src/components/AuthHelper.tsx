@@ -32,7 +32,7 @@ export default function AuthHelper({ children }: AuthHelperProps) {
 
   if (isAuth === false && token !== "") {
     setToken("")
-    navigate("/login")
+    navigate("/")
   }
 
   return <>{children}</>
