@@ -1,84 +1,91 @@
-import { useEffect, useState } from "react"
-import { useErrorBoundary } from "react-error-boundary"
-import { useParams } from "react-router"
-import { useRecoilValue, useRecoilValueLoadable, useSetRecoilState } from "recoil"
+import { useQuery } from "@tanstack/react-query"
+import { useEffect } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { useRecoilValue, useSetRecoilState } from "recoil"
 
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
 import FormCard from "@/components/EditProject/FormCard"
 import GrdmCard from "@/components/EditProject/GrdmCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
-import NoAuthCard from "@/components/NoAuthCard"
-import { initDmp } from "@/dmp"
-import { FilesNode, ProjectInfo, getProjectInfo, readDmpFile } from "@/grdmClient"
-import { dmpAtom, formTouchedStateAtom, grdmProjectNameAtom, initFormTouchedState, isNewAtom } from "@/store/dmp"
-import { authSelector, tokenAtom } from "@/store/token"
-import { userSelector } from "@/store/user"
+import { initDmp, Dmp } from "@/dmp"
+import { getProjectInfo, readDmpFile, ProjectInfo, FilesNode } from "@/grdmClient"
+import { useUser } from "@/hooks/useUser"
+import {
+  dmpAtom,
+  grdmProjectNameAtom,
+  formTouchedStateAtom,
+  initFormTouchedState,
+  isNewAtom,
+} from "@/store/dmp"
+import { tokenAtom } from "@/store/token"
 
 interface EditProjectProps {
   isNew?: boolean
 }
 
 export default function EditProject({ isNew }: EditProjectProps) {
-  const { showBoundary } = useErrorBoundary()
-  const auth = useRecoilValueLoadable(authSelector)
-  const user = useRecoilValueLoadable(userSelector)
+  const navigate = useNavigate()
+  const params = useParams<{ projectId: string }>()
+  const projectId = params.projectId!
   const token = useRecoilValue(tokenAtom)
-  const projectId = useParams<{ projectId: string }>().projectId!
-  const [project, setProject] = useState<ProjectInfo | undefined>(undefined)
-  const [dmpFileNode, setDmpFileNode] = useState<FilesNode | undefined>(undefined)
+  const userQuery = useUser(token)
+
   const setDmp = useSetRecoilState(dmpAtom)
   const setGrdmProjectName = useSetRecoilState(grdmProjectNameAtom)
-  const setFormTouchedState = useSetRecoilState(formTouchedStateAtom)
+  const setFormTouched = useSetRecoilState(formTouchedStateAtom)
   const setIsNew = useSetRecoilState(isNewAtom)
 
-  const isLogin = auth.state === "hasValue" && auth.contents
-  const loadingData = user.state !== "hasValue" ||
-    (!isNew && (project === undefined || dmpFileNode === undefined))
-
-  // Load project info and DMP file
+  // Initialize for new project
   useEffect(() => {
     if (isNew) {
-      // Initialize form state
       setDmp(initDmp())
       setGrdmProjectName("")
-      setFormTouchedState(initFormTouchedState())
+      setFormTouched(initFormTouchedState())
       setIsNew(true)
-    } else {
-      setGrdmProjectName("")
-      setFormTouchedState(initFormTouchedState())
-      setIsNew(false)
-      if (token) {
-        getProjectInfo(token, projectId)
-          .then((project) => {
-            setProject(project)
-            readDmpFile(token, projectId)
-              .then(({ dmp, node }) => {
-                setDmp(dmp)
-                setDmpFileNode(node)
-              })
-              .catch(showBoundary)
-          })
-          .catch(showBoundary)
-      }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isNew, setDmp, setGrdmProjectName, setFormTouched, setIsNew])
 
-  if (!isLogin) {
+  // Fetch project information
+  const projectQuery = useQuery<ProjectInfo, Error, ProjectInfo>({
+    queryKey: ["projectInfo", token, projectId],
+    queryFn: () => getProjectInfo(token, projectId),
+    enabled: !isNew && Boolean(token),
+  })
+
+  useEffect(() => {
+    if (projectQuery.data) {
+      setGrdmProjectName(projectQuery.data.title)
+    }
+  }, [projectQuery.data, setGrdmProjectName])
+
+  // Fetch DMP file
+  const dmpQuery = useQuery<{ dmp: Dmp; node: FilesNode }, Error, { dmp: Dmp; node: FilesNode }>({
+    queryKey: ["dmpFile", token, projectId],
+    queryFn: () => readDmpFile(token, projectId),
+    enabled: Boolean(projectQuery.data) && !isNew,
+  })
+
+  useEffect(() => {
+    if (dmpQuery.data) {
+      setDmp(dmpQuery.data.dmp)
+      setIsNew(false)
+    }
+  }, [dmpQuery.data, setDmp, setIsNew])
+
+  // Consolidate data fetching states
+  const loading = userQuery.isLoading || projectQuery.isLoading || dmpQuery.isLoading
+
+  const error = userQuery.error || projectQuery.error || dmpQuery.error
+
+  if (loading) {
     return (
       <Frame noAuth>
-        <NoAuthCard sx={{ mt: "1.5rem" }} />
+        <Loading msg="Loading..." />
       </Frame>
     )
   }
-
-  if (loadingData) {
-    return (
-      <Frame noAuth>
-        <Loading msg={"プロジェクト情報を取得中..."} />
-      </Frame>
-    )
-  }
+  if (error) throw error
 
   return (
     <Frame>
@@ -86,13 +93,10 @@ export default function EditProject({ isNew }: EditProjectProps) {
         sx={{ mt: "1.5rem" }}
         isNew={!!isNew}
         projectId={projectId}
-        user={user.contents!}
-        project={project}
+        user={userQuery.data}
+        project={projectQuery.data!}
       />
-      <GrdmCard
-        sx={{ mt: "1.5rem" }}
-        user={user.contents!}
-      />
+      <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data} />
       <ExportDmpCard sx={{ mt: "1.5rem" }} />
     </Frame>
   )

@@ -1,44 +1,49 @@
 import { Box, Button } from "@mui/material"
-import { useEffect, useState } from "react"
-import { useErrorBoundary } from "react-error-boundary"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { useRecoilValueLoadable, useRecoilValue } from "recoil"
+import { useRecoilValue } from "recoil"
 
 import Frame from "@/components/Frame"
 import LoginCard from "@/components/Home/LoginCard"
 import ProjectTable from "@/components/Home/ProjectTable"
 import Loading from "@/components/Loading"
 import { listingProjects, ProjectInfo, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { authSelector, tokenAtom } from "@/store/token"
-import { userSelector } from "@/store/user"
+import { useAuth } from "@/hooks/useAuth"
+import { useUser } from "@/hooks/useUser"
+import { tokenAtom } from "@/store/token"
 
 export default function Home() {
-  const { showBoundary } = useErrorBoundary()
-  const auth = useRecoilValueLoadable(authSelector)
-  const user = useRecoilValueLoadable(userSelector)
   const token = useRecoilValue(tokenAtom)
-  const [projects, setProjects] = useState<ProjectInfo[]>([])
-  const [loadingProjects, setLoadingProjects] = useState(false)
-  const isLogin = auth.state === "hasValue" && auth.contents
-  const isLoading = user.state === "loading" || loadingProjects
+  const auth = useAuth(token)
+  const userQuery = useUser(token)
+  const projectsQuery = useQuery<ProjectInfo[], Error, ProjectInfo[]>({
+    queryKey: ["projects", token],
+    queryFn: () =>
+      listingProjects(token).then((list) =>
+        list.filter((p) => p.title.startsWith(DMP_PROJECT_PREFIX)),
+      ),
+    enabled: Boolean(auth.data),
+  })
 
-  // Load projects
-  useEffect(() => {
-    if (token !== "") {
-      setLoadingProjects(true)
-      listingProjects(token)
-        .then((projects) => {
-          setProjects(projects.filter(project => project.title.startsWith(DMP_PROJECT_PREFIX)))
-        })
-        .catch(showBoundary)
-        .finally(() => setLoadingProjects(false))
-    }
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  const loading = auth.isLoading || userQuery.isLoading || projectsQuery.isLoading
+  const error = auth.error || userQuery.error || projectsQuery.error
 
-  if (isLoading) {
+  if (loading) {
     return (
       <Frame noAuth>
-        <Loading msg={"プロジェクト情報を取得中..."} />
+        <Loading msg="Loading..." />
+      </Frame>
+    )
+  }
+
+  if (error) {
+    throw error
+  }
+
+  if (!auth.data) {
+    return (
+      <Frame>
+        <LoginCard sx={{ mt: "1.5rem" }} />
       </Frame>
     )
   }
@@ -46,14 +51,15 @@ export default function Home() {
   return (
     <Frame>
       <Box sx={{ mt: "1rem" }}>
-        <Button component={Link} to="/example/simple" variant="outlined">
-          サンプルフォーム
+        <Button component={Link} to="/projects/new" variant="contained">
+          新規作成
         </Button>
       </Box>
-      {isLogin
-        ? <ProjectTable sx={{ mt: "1.5rem" }} user={user.contents!} projects={projects!} />
-        : <LoginCard sx={{ mt: "1.5rem" }} />
-      }
+      <ProjectTable
+        sx={{ mt: "1.5rem" }}
+        user={userQuery.data!}
+        projects={projectsQuery.data!}
+      />
     </Frame>
   )
 }
