@@ -5,6 +5,7 @@ import { useRecoilValue, useRecoilValueLoadable, useSetRecoilState } from "recoi
 
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
 import FormCard from "@/components/EditProject/FormCard"
+import GrdmCard from "@/components/EditProject/GrdmCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import NoAuthCard from "@/components/NoAuthCard"
@@ -87,6 +88,10 @@ export default function EditProject({ isNew }: EditProjectProps) {
         projectId={projectId}
         user={user.contents!}
         project={project}
+      />
+      <GrdmCard
+        sx={{ mt: "1.5rem" }}
+        user={user.contents!}
       />
       <ExportDmpCard sx={{ mt: "1.5rem" }} />
     </Frame>

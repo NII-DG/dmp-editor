@@ -1,6 +1,7 @@
 import { atom, selector } from "recoil"
 
 import { Dmp, DmpMetadata, dmpMetadataKeys, initDmp, ProjectInfo, projectInfoKeys } from "@/dmp"
+import { ProjectInfo as GrdmProjectInfo } from "@/grdmClient"
 
 // === DMP ===
 
@@ -19,6 +20,11 @@ export const grdmProjectNameAtom = atom<string>({
 export const existingGrdmProjectNamesAtom = atom<string[]>({
   key: "dmp-editor.existingGrdmProjectNames",
   default: [] as string[],
+})
+
+export const existingGrdmProjectsAtom = atom<GrdmProjectInfo[]>({
+  key: "dmp-editor.existingGrdmProjects",
+  default: [] as GrdmProjectInfo[],
 })
 
 // === Form Validation ===

@@ -7,7 +7,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil"
 
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import { ProjectInfo, listingProjects, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { grdmProjectNameAtom, formTouchedStateAtom, formValidationState, existingGrdmProjectNamesAtom } from "@/store/dmp"
+import { grdmProjectNameAtom, formTouchedStateAtom, formValidationState, existingGrdmProjectNamesAtom, existingGrdmProjectsAtom } from "@/store/dmp"
 import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
 
@@ -24,7 +24,8 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
   const errors = useRecoilValue(formValidationState)
   const error = errors.grdmProjectName
   const setTouched = useSetRecoilState(formTouchedStateAtom)
-  const setExistsGrdmProjectNames = useSetRecoilState(existingGrdmProjectNamesAtom)
+  const setExistingGrdmProjectNames = useSetRecoilState(existingGrdmProjectNamesAtom)
+  const setExistingGrdmProjects = useSetRecoilState(existingGrdmProjectsAtom)
 
   const updateTouch = () => {
     setTouched(prev => ({
@@ -35,14 +36,15 @@ export default function GrdmProject({ sx, isNew, project }: GrdmProjectProps) {
 
   // Initialize existsProjectNames
   useEffect(() => {
-    if (!isNew) return
-
     listingProjects(token).then((projects) => {
-      setExistsGrdmProjectNames(
-        projects
-          .filter(project => project.title.startsWith(DMP_PROJECT_PREFIX))
-          .map(project => project.title),
-      )
+      if (isNew) {
+        setExistingGrdmProjectNames(
+          projects
+            .filter(project => project.title.startsWith(DMP_PROJECT_PREFIX))
+            .map(project => project.title),
+        )
+      }
+      setExistingGrdmProjects([...projects])
     }).catch(showBoundary)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

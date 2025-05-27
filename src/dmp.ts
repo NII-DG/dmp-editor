@@ -8,6 +8,7 @@ export interface Dmp {
   projectInfo: ProjectInfo // プロジェクト情報
   personInfo: PersonInfo[] // 担当者情報
   dataInfo: DataInfo[] // 研究データ情報
+  linkedGrdmProjectIds?: string[] // 関連する GRDM プロジェクト ID
 }
 
 export type RevisionType = "新規" | "修正" | "更新"
@@ -125,6 +126,12 @@ export interface DataInfo {
   dataManagerContact: string // データ管理者の連絡先
   dataStorageLocation?: string | null // 研究データの保存場所 (研究事業終了後)
   dataStoragePeriod?: string | null // 研究データの保存期間 (研究事業終了後)
+  // linkedGrdmDiFiles: {
+  // 末端 node のみ(files) をするのか
+  // 選択された中間 node にするのか？
+  // files: string[]
+  // sumDataSize: number
+  // }
 }
 
 export const dataInfoKeys: (keyof DataInfo)[] = ["dataName", "publicationDate", "description", "acquisitionMethod", "researchField", "dataType", "dataSize", "reuseInformation", "hasSensitiveData", "sensitiveDataPolicy", "usagePolicy", "repositoryInformation", "backupLocation", "publicationPolicy", "accessRights", "plannedPublicationDate", "repository", "dataCreator", "dataManagementAgency", "rorId", "dataManager", "dataManagerContact", "dataStorageLocation", "dataStoragePeriod"]
@@ -161,6 +168,7 @@ export const dmpSchema = z.object({
   projectInfo: projectInfoSchema,
   personInfo: z.array(personInfoSchema),
   dataInfo: z.array(dataInfoSchema),
+  linkedGrdmProjectIds: z.array(z.string()).optional(),
 })
 
 // === Initial values ===
@@ -185,6 +193,7 @@ export const initDmp = (): Dmp => {
     },
     personInfo: [],
     dataInfo: [],
+    linkedGrdmProjectIds: [],
   }
 }
 

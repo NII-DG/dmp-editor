@@ -12,6 +12,9 @@ export const theme = createTheme({
     info: {
       main: colors.grey[800],
     },
+    warning: {
+      main: colors.deepOrange[500],
+    },
     text: {
       primary: colors.grey[900],
       secondary: colors.grey[600],

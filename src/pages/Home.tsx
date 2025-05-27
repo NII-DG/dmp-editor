@@ -1,5 +1,7 @@
+import { Box, Button } from "@mui/material"
 import { useEffect, useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
+import { Link } from "react-router-dom"
 import { useRecoilValueLoadable, useRecoilValue } from "recoil"
 
 import Frame from "@/components/Frame"
@@ -43,6 +45,11 @@ export default function Home() {
 
   return (
     <Frame>
+      <Box sx={{ mt: "1rem" }}>
+        <Button component={Link} to="/example/simple" variant="outlined">
+          サンプルフォーム
+        </Button>
+      </Box>
       {isLogin
         ? <ProjectTable sx={{ mt: "1.5rem" }} user={user.contents!} projects={projects!} />
         : <LoginCard sx={{ mt: "1.5rem" }} />
