@@ -1,19 +1,14 @@
 import { Box, TextField, FormControl, MenuItem } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { useEffect } from "react"
-import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil"
+import React from "react"
+import { useFormContext, Controller } from "react-hook-form"
 
-import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
-import { revisionType, todayString, DmpMetadata } from "@/dmp"
-import { formValidationState, dmpAtom, formTouchedStateAtom } from "@/store/dmp"
+import { revisionType } from "@/dmp"
+import type { DmpMetadata } from "@/dmp"
 
-interface DmpMetadataSectionProps {
-  sx?: SxProps
-}
-
-interface FormData {
+const formData: {
   key: keyof DmpMetadata
   label: string
   required: boolean
@@ -21,10 +16,7 @@ interface FormData {
   helperText?: string
   type: "text" | "date" | "select"
   options?: string[]
-  helpChip?: React.ReactNode
-}
-
-const formData: FormData[] = [
+}[] = [
   {
     key: "revisionType",
     label: "種別",
@@ -56,63 +48,43 @@ const formData: FormData[] = [
   },
 ]
 
-export default function DmpMetadataSection({ sx }: DmpMetadataSectionProps) {
-  const [dmp, setDmp] = useRecoilState(dmpAtom)
-  const errors = useRecoilValue(formValidationState)
-  const setTouched = useSetRecoilState(formTouchedStateAtom)
-
-  const updateValue = <K extends keyof DmpMetadata>(key: K, value: DmpMetadata[K]) => {
-    setDmp((prev) => ({
-      ...prev,
-      metadata: {
-        ...prev.metadata,
-        [key]: value,
-      },
-    }))
-  }
-  const updateTouched = (key: keyof DmpMetadata) => {
-    setTouched((prev) => ({
-      ...prev,
-      [key]: true,
-    }))
-  }
-
-  // Set initial values
-  useEffect(() => {
-    updateValue("submissionDate", todayString())
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
+export default function DmpMetadataSection({ sx }: { sx?: SxProps }) {
+  const { control } = useFormContext<{ metadata: DmpMetadata }>()
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="DMP 作成・更新情報" />
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "1rem" }}>
-        {formData.map(({ key, label, required, width, helperText, type, options, helpChip }) => (
-          <FormControl key={key} fullWidth>
-            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-              <OurFormLabel label={label} required={required} />
-              {helpChip && <HelpChip text={helpChip} />}
-            </Box>
-            <TextField
-              fullWidth
-              variant="outlined"
-              error={errors[key] !== null}
-              helperText={errors[key] ?? helperText}
-              sx={{
-                maxWidth: width,
-              }}
-              value={dmp.metadata[key]}
-              onChange={(e) => updateValue(key, e.target.value)}
-              onBlur={() => updateTouched(key)}
-              type={type === "date" ? "date" : "text"}
-              select={type === "select"}
-              size="small"
-            >
-              {type === "select" &&
-                options!.map((option) => (
-                  <MenuItem key={option} value={option} children={option} />
-                ))}
-            </TextField>
-          </FormControl>
+        {formData.map(({ key, label, required, width, helperText, type, options }) => (
+          <Controller
+            key={key}
+            name={`metadata.${key}`}
+            control={control}
+            render={({ field, fieldState }) => (
+              <FormControl fullWidth>
+                <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+                  <OurFormLabel label={label} required={required} />
+                </Box>
+                <TextField
+                  {...field}
+                  fullWidth
+                  variant="outlined"
+                  error={Boolean(fieldState.error)}
+                  helperText={fieldState.error?.message ?? helperText}
+                  sx={{ maxWidth: width }}
+                  type={type === "date" ? "date" : "text"}
+                  select={type === "select"}
+                  size="small"
+                >
+                  {type === "select" &&
+                    options!.map((opt) => (
+                      <MenuItem key={opt} value={opt}>
+                        {opt}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </FormControl>
+            )}
+          />
         ))}
       </Box>
     </Box>

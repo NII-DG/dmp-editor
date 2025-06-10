@@ -1,107 +1,71 @@
-import { useQuery } from "@tanstack/react-query"
-import { useEffect } from "react"
+import { Box, Button } from "@mui/material"
+import React from "react"
+import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
-import { useRecoilValue, useSetRecoilState } from "recoil"
+import { useRecoilValue } from "recoil"
 
+import DataInfoSection from "@/components/EditProject/DataInfoSection"
+import DmpMetadataSection from "@/components/EditProject/DmpMetadataSection"
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
-import FormCard from "@/components/EditProject/FormCard"
-import GrdmCard from "@/components/EditProject/GrdmCard"
+import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
+import SectionHeader from "@/components/EditProject/SectionHeader"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
-import { initDmp, Dmp } from "@/dmp"
-import { getProjectInfo, readDmpFile, ProjectInfo, FilesNode } from "@/grdmClient"
-import { useUser } from "@/hooks/useUser"
-import {
-  dmpAtom,
-  grdmProjectNameAtom,
-  formTouchedStateAtom,
-  initFormTouchedState,
-  isNewAtom,
-} from "@/store/dmp"
+import type { Dmp } from "@/dmp"
+import { useDmp } from "@/hooks/useDmp"
+import { useUpdateDmp } from "@/hooks/useUpdateDmp"
 import { tokenAtom } from "@/store/token"
 
-interface EditProjectProps {
-  isNew?: boolean
-}
-
-export default function EditProject({ isNew }: EditProjectProps) {
-  const params = useParams<{ projectId: string }>()
-  const projectId = params.projectId!
+export default function EditProject() {
+  const { projectId = "" } = useParams<{ projectId: string }>()
   const token = useRecoilValue(tokenAtom)
-  const userQuery = useUser()
 
-  const setDmp = useSetRecoilState(dmpAtom)
-  const setGrdmProjectName = useSetRecoilState(grdmProjectNameAtom)
-  const setFormTouched = useSetRecoilState(formTouchedStateAtom)
-  const setIsNew = useSetRecoilState(isNewAtom)
+  const { data: dmp, isLoading, error } = useDmp(projectId, token)
+  const updateMutation = useUpdateDmp(projectId, token)
 
-  // Initialize for new project
-  useEffect(() => {
-    if (isNew) {
-      setDmp(initDmp())
-      setGrdmProjectName("")
-      setFormTouched(initFormTouchedState())
-      setIsNew(true)
-    }
-  }, [isNew, setDmp, setGrdmProjectName, setFormTouched, setIsNew])
-
-  // Fetch project information
-  const projectQuery = useQuery<ProjectInfo, Error, ProjectInfo>({
-    queryKey: ["projectInfo", token, projectId],
-    queryFn: () => getProjectInfo(token, projectId),
-    enabled: !isNew && Boolean(token),
+  const methods = useForm<Dmp>({
+    defaultValues: dmp,
+    mode: "onChange",
   })
 
-  useEffect(() => {
-    if (projectQuery.data) {
-      setGrdmProjectName(projectQuery.data.title)
-    }
-  }, [projectQuery.data, setGrdmProjectName])
-
-  // Fetch DMP file
-  const dmpQuery = useQuery<{ dmp: Dmp; node: FilesNode }, Error, { dmp: Dmp; node: FilesNode }>({
-    queryKey: ["dmpFile", token, projectId],
-    queryFn: () => readDmpFile(token, projectId),
-    enabled: Boolean(projectQuery.data) && !isNew,
-  })
-
-  useEffect(() => {
-    if (dmpQuery.data) {
-      setDmp(dmpQuery.data.dmp)
-      setIsNew(false)
-    }
-  }, [dmpQuery.data, setDmp, setIsNew])
-
-  // Consolidate data fetching states
-  const loading = userQuery.isLoading || projectQuery.isLoading || dmpQuery.isLoading
-
-  const error = userQuery.error || projectQuery.error || dmpQuery.error
-
-  if (loading) {
+  if (isLoading || !dmp) {
     return (
       <Frame noAuth>
         <Loading msg="Loading..." />
       </Frame>
     )
   }
-  if (error) throw error
 
-  // Ensure user data is present
-  if (!userQuery.data) {
-    throw new Error("User not authenticated")
-  }
+  if (error) throw error
 
   return (
     <Frame>
-      <FormCard
-        sx={{ mt: "1.5rem" }}
-        isNew={!!isNew}
-        projectId={projectId}
-        user={userQuery.data!}
-        project={projectQuery.data!}
-      />
-      <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data!} />
-      <ExportDmpCard sx={{ mt: "1.5rem" }} />
+      <FormProvider {...methods}>
+        <form
+          onSubmit={methods.handleSubmit((values) =>
+            updateMutation.mutate(values),
+          )}
+        >
+          <SectionHeader text="DMP 作成・更新情報" />
+          <DmpMetadataSection />
+
+          <SectionHeader text="Project Info" />
+          <ProjectInfoSection />
+
+          <SectionHeader text="Data Info" />
+          <DataInfoSection />
+
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
+            <Button type="submit" variant="contained" color="primary">
+              保存
+            </Button>
+          </Box>
+        </form>
+
+        <Box sx={{ mt: 4 }}>
+          <ExportDmpCard />
+        </Box>
+      </FormProvider>
     </Frame>
   )
 }

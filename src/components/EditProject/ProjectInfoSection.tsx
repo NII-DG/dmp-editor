@@ -1,19 +1,13 @@
-import { Box, TextField, FormControl, Link, MenuItem } from "@mui/material"
+import { Box, TextField, FormControl, MenuItem } from "@mui/material"
 import { SxProps } from "@mui/system"
-import React, { useEffect } from "react"
-import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil"
+import React from "react"
+import { useFormContext, Controller } from "react-hook-form"
 
-import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
-import { ProjectInfo } from "@/dmp"
-import { dmpAtom, formValidationState, formTouchedStateAtom } from "@/store/dmp"
+import type { ProjectInfo } from "@/dmp"
 
-interface ProjectInfoSectionProps {
-  sx?: SxProps
-}
-
-interface FormData {
+const formData: {
   key: keyof ProjectInfo
   label: string
   required: boolean
@@ -22,9 +16,7 @@ interface FormData {
   type: "text" | "date" | "select"
   options?: string[]
   helpChip?: React.ReactNode
-}
-
-const formData: FormData[] = [
+}[] = [
   {
     key: "fundingAgency",
     label: "資金配分機関情報",
@@ -38,11 +30,19 @@ const formData: FormData[] = [
     required: false,
     width: "480px",
     type: "text",
-    helpChip: (<>
-      {"NISTEP 体系的番号一覧 ("}
-      <Link href="https://www.nistep.go.jp/taikei" target="_blank" rel="noopener" children="https://www.nistep.go.jp/taikei" />
-      {") に掲載されている「事業・制度名」を記載してください。"}
-    </>),
+    helpChip: (
+      <>
+        NISTEP 体系的番号一覧 (
+        <a
+          href="https://www.nistep.go.jp/taikei"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          https://www.nistep.go.jp/taikei
+        </a>
+        ) の「事業・制度名」を記載してください。
+      </>
+    ),
   },
   {
     key: "programCode",
@@ -52,9 +52,15 @@ const formData: FormData[] = [
     type: "text",
     helpChip: (
       <>
-        {"NISTEP 体系的番号一覧 ("}
-        <Link href="https://www.nistep.go.jp/taikei" target="_blank" rel="noopener" children="https://www.nistep.go.jp/taikei" />
-        {") に掲載されている「機関コード」および「施策・事業の特定コード」を表すコードを記載してください。"}
+        NISTEP 体系的番号一覧 (
+        <a
+          href="https://www.nistep.go.jp/taikei"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          https://www.nistep.go.jp/taikei
+        </a>
+        ) の「機関コード」および「事業特定コード」を記載してください。
       </>
     ),
   },
@@ -95,63 +101,48 @@ const formData: FormData[] = [
   },
 ]
 
+export interface ProjectInfoSectionProps {
+  sx?: SxProps
+}
+
 export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
-  const [dmp, setDmp] = useRecoilState(dmpAtom)
-  const errors = useRecoilValue(formValidationState)
-  const setTouched = useSetRecoilState(formTouchedStateAtom)
-
-  const updateValue = <K extends keyof ProjectInfo>(key: K, value: ProjectInfo[K]) => {
-    setDmp((prev) => ({
-      ...prev,
-      projectInfo: {
-        ...prev.projectInfo,
-        [key]: value,
-      },
-    }))
-  }
-  const updateTouched = (key: keyof ProjectInfo) => {
-    setTouched((prev) => ({
-      ...prev,
-      [key]: true,
-    }))
-  }
-
-  // Set initial values
-  useEffect(() => {
-    // do nothing
-  }, [])
-
+  const { control } = useFormContext<{ projectInfo: ProjectInfo }>()
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="プロジェクト情報" />
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "1rem" }}>
         {formData.map(({ key, label, required, width, helperText, type, options, helpChip }) => (
-          <FormControl key={key} fullWidth>
-            <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-              <OurFormLabel label={label} required={required} />
-              {helpChip && <HelpChip text={helpChip} />}
-            </Box>
-            <TextField
-              fullWidth
-              variant="outlined"
-              error={errors[key] !== null}
-              helperText={errors[key] ?? helperText}
-              sx={{
-                maxWidth: width,
-              }}
-              value={dmp.projectInfo[key]}
-              onChange={(e) => updateValue(key, e.target.value)}
-              onBlur={() => updateTouched(key)}
-              type={type === "date" ? "date" : "text"}
-              select={type === "select"}
-              size="small"
-            >
-              {type === "select" &&
-                options!.map((option) => (
-                  <MenuItem key={option} value={option} children={option} />
-                ))}
-            </TextField>
-          </FormControl>
+          <Controller
+            key={key}
+            name={`projectInfo.${key}`}
+            control={control}
+            render={({ field, fieldState }) => (
+              <FormControl fullWidth>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <OurFormLabel label={label} required={required} />
+                  {helpChip && <span>{helpChip}</span>}
+                </Box>
+                <TextField
+                  {...field}
+                  fullWidth
+                  variant="outlined"
+                  error={Boolean(fieldState.error)}
+                  helperText={fieldState.error?.message ?? helperText}
+                  sx={{ maxWidth: width }}
+                  type={type === "date" ? "date" : "text"}
+                  select={type === "select"}
+                  size="small"
+                >
+                  {type === "select" &&
+                    options!.map((opt) => (
+                      <MenuItem key={opt} value={opt}>
+                        {opt}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </FormControl>
+            )}
+          />
         ))}
       </Box>
     </Box>
