@@ -7,3 +7,8 @@ export const tokenAtom = atom<string>({
   default: "",
   effects: [localStorageEffect("dmp-editor.token")],
 })
+
+export const prevUrlAtom = atom<string>({
+  key: "dmp-editor.prevUrl",
+  default: "/",
+})

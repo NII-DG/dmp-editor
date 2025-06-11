@@ -26,9 +26,7 @@ export default function Home() {
     )
   }
 
-  if (error) {
-    throw error
-  }
+  if (error) throw error
 
   if (!auth.data) {
     return (

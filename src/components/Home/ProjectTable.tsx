@@ -18,7 +18,7 @@ import { useNavigate } from "react-router"
 
 import OurCard from "@/components/OurCard"
 import { ProjectInfo, formatDateToTimezone, DMP_PROJECT_PREFIX } from "@/grdmClient"
-import { User } from "@/store/user"
+import { User } from "@/hooks/useUser"
 
 interface ProjectTableProps {
   sx?: SxProps

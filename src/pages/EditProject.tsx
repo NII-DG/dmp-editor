@@ -22,10 +22,7 @@ interface EditProjectProps {
 
 export default function EditProject({ isNew }: EditProjectProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
-  const token = useRecoilValue(tokenAtom)
-  const auth = useAuth(token)
-
-  const { data: dmp, isLoading, error } = useDmp(projectId, token)
+  const { data: dmp, isLoading, error } = useDmp(projectId)
   const updateMutation = useUpdateDmp(projectId, token)
 
   const methods = useForm<Dmp>({
@@ -46,7 +43,8 @@ export default function EditProject({ isNew }: EditProjectProps) {
   return (
     <Frame>
       <FormProvider {...methods}>
-        <form
+        <Box
+          component="form"
           onSubmit={methods.handleSubmit((values) =>
             updateMutation.mutate(values),
           )}
@@ -65,8 +63,7 @@ export default function EditProject({ isNew }: EditProjectProps) {
               保存
             </Button>
           </Box>
-        </form>
-
+        </Box>
         <Box sx={{ mt: 4 }}>
           <ExportDmpCard />
         </Box>
