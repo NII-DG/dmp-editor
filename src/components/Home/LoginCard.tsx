@@ -57,7 +57,7 @@ export default function LoginCard({ sx }: LoginCardProps) {
       <Box
         component="form"
         onSubmit={handleSubmit(onSubmit)}
-        sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1.5rem", mt: "1.5rem" }}
+        sx={{ display: "flex", flexDirection: "row", gap: "1.5rem", mt: "1.5rem" }}
       >
         <FormControl sx={{ flexGrow: 1, maxWidth: "400px" }} error={!!errors.token}>
           <InputLabel>
@@ -84,18 +84,20 @@ export default function LoginCard({ sx }: LoginCardProps) {
           />
           <FormHelperText>{errors.token?.message ?? ""}</FormHelperText>
         </FormControl>
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ width: "120px", mb: "1.65rem" }}
-          color="secondary"
-          disabled={isSubmitting}
-          startIcon={<LockOutlined />}
-        >
-          {isSubmitting ? "認証中..." : "認証"}
-        </Button>
+        <Box sx={{ mt: "0.5rem" }}>
+          <Button
+            type="submit"
+            variant="contained"
+            sx={{ width: "120px" }}
+            color="secondary"
+            disabled={isSubmitting}
+            startIcon={<LockOutlined />}
+          >
+            {isSubmitting ? "認証中..." : "認証"}
+          </Button>
+        </Box>
       </Box>
-      <Divider sx={{ mt: "0.5rem", mb: "2rem" }} />
+      <Divider sx={{ mt: "1.5rem", mb: "1.5rem" }} />
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <Typography>
           {"Token は、"}

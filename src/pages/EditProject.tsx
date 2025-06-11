@@ -1,5 +1,4 @@
 import { Box, Button } from "@mui/material"
-import React from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
 import { useRecoilValue } from "recoil"
@@ -12,13 +11,19 @@ import SectionHeader from "@/components/EditProject/SectionHeader"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import type { Dmp } from "@/dmp"
+import { useAuth } from "@/hooks/useAuth"
 import { useDmp } from "@/hooks/useDmp"
-import { useUpdateDmp } from "@/hooks/useUpdateDmp"
+// import { useUpdateDmp } from "@/hooks/useUpdateDmp"
 import { tokenAtom } from "@/store/token"
 
-export default function EditProject() {
+interface EditProjectProps {
+  isNew?: boolean
+}
+
+export default function EditProject({ isNew }: EditProjectProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const token = useRecoilValue(tokenAtom)
+  const auth = useAuth(token)
 
   const { data: dmp, isLoading, error } = useDmp(projectId, token)
   const updateMutation = useUpdateDmp(projectId, token)

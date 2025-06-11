@@ -1,20 +1,24 @@
 import { useQuery } from "@tanstack/react-query"
+import { useRecoilValue } from "recoil"
 
 import type { Dmp } from "@/dmp"
 import { readDmpFile } from "@/grdmClient"
+import { tokenAtom } from "@/store/token"
 
 /**
- * Fetch DMP data using React Query.
+ * Custom hook to fetch the Data Management Plan (DMP) for a GRDM project.
+ * AuthHelper guarantees that token is always available.
  * @param projectId - GRDM project identifier
- * @param token - authentication token
  */
-export function useDmp(projectId: string, token: string) {
+export function useDmp(projectId: string) {
+  const token = useRecoilValue(tokenAtom)
+
   return useQuery<Dmp, Error>({
     queryKey: ["dmp", token, projectId],
     queryFn: async () => {
       const res = await readDmpFile(token, projectId)
       return res.dmp
     },
-    enabled: Boolean(projectId) && Boolean(token),
+    enabled: !!token && !!projectId,
   })
 }

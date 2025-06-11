@@ -44,10 +44,10 @@ export const toUser = (response: GetMeResponse): User => {
  */
 export const useUser = () => {
   const token = useRecoilValue(tokenAtom)
+
   return useQuery<User | null, Error>({
     queryKey: ["user", token],
-    queryFn: () => (token ? getMe(token).then(toUser) : Promise.resolve(null)),
-    staleTime: Infinity,
-    refetchOnMount: "always",
+    queryFn: () => getMe(token).then(toUser),
+    enabled: !!token,
   })
 }

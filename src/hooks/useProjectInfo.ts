@@ -6,22 +6,15 @@ import { tokenAtom } from "@/store/token"
 
 /**
  * Custom hook to fetch project information.
- * Wraps React Query getProjectInfo and returns
- * { data, isLoading, isError }.
+ * AuthHelper guarantees that token is always available.
+ * @param projectId - The ID of the project to fetch information for.
  */
 export const useProjectInfo = (projectId: string) => {
   const token = useRecoilValue(tokenAtom)
 
   return useQuery<ProjectInfo, Error>({
     queryKey: ["projectInfo", token, projectId],
-    queryFn: () => {
-      if (!token) {
-        return Promise.reject(new Error("No token available"))
-      }
-      return getProjectInfo(token, projectId)
-    },
-    enabled: Boolean(token) && Boolean(projectId),
-    staleTime: Infinity,
-    refetchOnMount: "always",
+    queryFn: () => getProjectInfo(token, projectId),
+    enabled: !!token && !!projectId,
   })
 }
