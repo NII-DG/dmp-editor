@@ -1,13 +1,14 @@
-import { Box, TextField, FormControl, MenuItem } from "@mui/material"
+import { Box, TextField, FormControl, MenuItem, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
 import React from "react"
 import { useFormContext, Controller } from "react-hook-form"
 
+import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
-import type { ProjectInfo } from "@/dmp"
+import type { ProjectInfo, DmpFormValues } from "@/dmp"
 
-const formData: {
+interface FormData {
   key: keyof ProjectInfo
   label: string
   required: boolean
@@ -16,7 +17,9 @@ const formData: {
   type: "text" | "date" | "select"
   options?: string[]
   helpChip?: React.ReactNode
-}[] = [
+}
+
+const formData: FormData[] = [
   {
     key: "fundingAgency",
     label: "資金配分機関情報",
@@ -32,15 +35,14 @@ const formData: {
     type: "text",
     helpChip: (
       <>
-        NISTEP 体系的番号一覧 (
-        <a
+        {"NISTEP 体系的番号一覧 ("}
+        <Link
           href="https://www.nistep.go.jp/taikei"
           target="_blank"
           rel="noopener noreferrer"
-        >
-          https://www.nistep.go.jp/taikei
-        </a>
-        ) の「事業・制度名」を記載してください。
+          children="https://www.nistep.go.jp/taikei"
+        />
+        {") の「事業・制度名」を記載してください。"}
       </>
     ),
   },
@@ -52,16 +54,16 @@ const formData: {
     type: "text",
     helpChip: (
       <>
-        NISTEP 体系的番号一覧 (
-        <a
+        {"NISTEP 体系的番号一覧 ("}
+        <Link
           href="https://www.nistep.go.jp/taikei"
           target="_blank"
           rel="noopener noreferrer"
-        >
-          https://www.nistep.go.jp/taikei
-        </a>
-        ) の「機関コード」および「事業特定コード」を記載してください。
+          children="https://www.nistep.go.jp/taikei"
+        />
+        {") に掲載されている「機関コード」および「施策・事業の特定コード」を表すコードを記載してください。"}
       </>
+
     ),
   },
   {
@@ -101,12 +103,13 @@ const formData: {
   },
 ]
 
-export interface ProjectInfoSectionProps {
+interface ProjectInfoSectionProps {
   sx?: SxProps
 }
 
 export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
-  const { control } = useFormContext<{ projectInfo: ProjectInfo }>()
+  const { control } = useFormContext<DmpFormValues>()
+
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="プロジェクト情報" />
@@ -114,30 +117,31 @@ export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
         {formData.map(({ key, label, required, width, helperText, type, options, helpChip }) => (
           <Controller
             key={key}
-            name={`projectInfo.${key}`}
+            name={`dmp.projectInfo.${key}`}
             control={control}
-            render={({ field, fieldState }) => (
+            rules={required ? { required: `${label} は必須です` } : {}}
+            render={({ field, fieldState: { error } }) => (
               <FormControl fullWidth>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
                   <OurFormLabel label={label} required={required} />
-                  {helpChip && <span>{helpChip}</span>}
+                  {helpChip && <HelpChip text={helpChip} />}
                 </Box>
                 <TextField
                   {...field}
                   fullWidth
                   variant="outlined"
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message ?? helperText}
+                  error={!!error}
+                  helperText={error?.message ?? helperText}
+                  value={field.value ?? ""}
+                  onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.value)}
                   sx={{ maxWidth: width }}
                   type={type === "date" ? "date" : "text"}
                   select={type === "select"}
                   size="small"
                 >
                   {type === "select" &&
-                    options!.map((opt) => (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
+                    options!.map((option) => (
+                      <MenuItem key={option} value={option} children={option} />
                     ))}
                 </TextField>
               </FormControl>

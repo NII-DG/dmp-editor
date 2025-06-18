@@ -10,15 +10,17 @@ import { tokenAtom } from "@/store/token"
  * AuthHelper guarantees that token is always available.
  * @param projectId - GRDM project identifier
  */
-export function useDmp(projectId: string) {
+export function useDmp(projectId: string, isNew = false) {
   const token = useRecoilValue(tokenAtom)
 
-  return useQuery<Dmp, Error>({
+  return useQuery<Dmp | null, Error>({
     queryKey: ["dmp", token, projectId],
     queryFn: async () => {
+      if (isNew) return null
+
       const res = await readDmpFile(token, projectId)
       return res.dmp
     },
-    enabled: !!token && !!projectId,
+    enabled: !!token,
   })
 }

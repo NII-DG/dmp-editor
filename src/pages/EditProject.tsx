@@ -1,36 +1,52 @@
-import { Box, Button } from "@mui/material"
+import { useEffect } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
-import { useRecoilValue } from "recoil"
 
-import DataInfoSection from "@/components/EditProject/DataInfoSection"
-import DmpMetadataSection from "@/components/EditProject/DmpMetadataSection"
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
-import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
-import SectionHeader from "@/components/EditProject/SectionHeader"
+import FormCard from "@/components/EditProject/FormCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
-import type { Dmp } from "@/dmp"
-import { useAuth } from "@/hooks/useAuth"
+import { initDmp, DmpFormValues } from "@/dmp"
 import { useDmp } from "@/hooks/useDmp"
-// import { useUpdateDmp } from "@/hooks/useUpdateDmp"
-import { tokenAtom } from "@/store/token"
+import { useProjectInfo } from "@/hooks/useProjectInfo"
+import { useProjects } from "@/hooks/useProjects"
+import { useUser } from "@/hooks/useUser"
 
 interface EditProjectProps {
   isNew?: boolean
 }
 
-export default function EditProject({ isNew }: EditProjectProps) {
+export default function EditProject({ isNew = false }: EditProjectProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
-  const { data: dmp, isLoading, error } = useDmp(projectId)
-  const updateMutation = useUpdateDmp(projectId, token)
+  const dmpQuery = useDmp(projectId, isNew)
+  const userQuery = useUser()
+  const projectQuery = useProjectInfo(projectId, isNew)
+  const projectsQuery = useProjects(isNew) // if isNew, fetch all projects for validation
 
-  const methods = useForm<Dmp>({
-    defaultValues: dmp,
-    mode: "onChange",
+  const loading = dmpQuery.isLoading || userQuery.isLoading || projectQuery.isLoading || projectsQuery.isLoading
+  const error = dmpQuery.error || userQuery.error || projectQuery.error || projectsQuery.error
+
+  const methods = useForm<DmpFormValues>({
+    defaultValues: {
+      grdmProjectName: "",
+      dmp: initDmp(userQuery.data),
+    },
+    mode: "onBlur",
+    reValidateMode: "onBlur",
   })
 
-  if (isLoading || !dmp) {
+  // Initialize default values based on the fetched data
+  useEffect(() => {
+    if (dmpQuery.data && userQuery.data && projectQuery.data) {
+      const defaultValues = {
+        grdmProjectName: projectQuery.data?.title ?? "",
+        dmp: isNew ? initDmp(userQuery.data) : dmpQuery.data,
+      }
+      methods.reset(defaultValues)
+    }
+  }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data])
+
+  if (loading) {
     return (
       <Frame noAuth>
         <Loading msg="Loading..." />
@@ -43,13 +59,13 @@ export default function EditProject({ isNew }: EditProjectProps) {
   return (
     <Frame>
       <FormProvider {...methods}>
-        <Box
-          component="form"
-          onSubmit={methods.handleSubmit((values) =>
-            updateMutation.mutate(values),
-          )}
-        >
-          <SectionHeader text="DMP 作成・更新情報" />
+        <FormCard
+          sx={{ mt: "1.5rem" }}
+          isNew={isNew}
+          project={projectQuery.data}
+          projects={projectsQuery.data!}
+        />
+        {/* <SectionHeader text="DMP 作成・更新情報" />
           <DmpMetadataSection />
 
           <SectionHeader text="Project Info" />
@@ -58,15 +74,13 @@ export default function EditProject({ isNew }: EditProjectProps) {
           <SectionHeader text="Data Info" />
           <DataInfoSection />
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "1.5rem" }}>
             <Button type="submit" variant="contained" color="primary">
               保存
             </Button>
-          </Box>
-        </Box>
-        <Box sx={{ mt: 4 }}>
-          <ExportDmpCard />
-        </Box>
+          </Box> */}
+
+        <ExportDmpCard sx={{ mt: "1.5rem" }} />
       </FormProvider>
     </Frame>
   )

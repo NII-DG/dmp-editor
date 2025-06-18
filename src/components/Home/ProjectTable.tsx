@@ -92,7 +92,7 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
   const filtered = projects.filter((p) => p.title.startsWith(DMP_PROJECT_PREFIX))
 
   return (
-    <OurCard sx={{ ...sx }}>
+    <OurCard sx={sx}>
       <Typography sx={{ fontSize: "1.5rem" }} component="h1">
         DMP Project 一覧
       </Typography>

@@ -45,7 +45,7 @@ export default function GrdmCard({ sx, user }: GrdmCardProps) {
   }
 
   return (
-    <OurCard sx={{ ...sx }}>
+    <OurCard sx={sx}>
       <Typography sx={{ fontSize: "1.5rem" }} component="h1">
         DMP への GRDM Project の関連付け
       </Typography>

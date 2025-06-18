@@ -1,14 +1,13 @@
 import { Box, TextField, FormControl, MenuItem } from "@mui/material"
 import { SxProps } from "@mui/system"
-import React from "react"
 import { useFormContext, Controller } from "react-hook-form"
 
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
-import { revisionType } from "@/dmp"
+import { DmpFormValues, revisionType } from "@/dmp"
 import type { DmpMetadata } from "@/dmp"
 
-const formData: {
+interface FormData {
   key: keyof DmpMetadata
   label: string
   required: boolean
@@ -16,7 +15,9 @@ const formData: {
   helperText?: string
   type: "text" | "date" | "select"
   options?: string[]
-}[] = [
+}
+
+const formProps: FormData[] = [
   {
     key: "revisionType",
     label: "種別",
@@ -48,38 +49,40 @@ const formData: {
   },
 ]
 
-export default function DmpMetadataSection({ sx }: { sx?: SxProps }) {
-  const { control } = useFormContext<{ metadata: DmpMetadata }>()
+interface DmpMetadataSectionProps {
+  sx?: SxProps
+}
+
+export default function DmpMetadataSection({ sx }: DmpMetadataSectionProps) {
+  const { control } = useFormContext<DmpFormValues>()
+
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="DMP 作成・更新情報" />
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "1rem" }}>
-        {formData.map(({ key, label, required, width, helperText, type, options }) => (
+        {formProps.map(({ key, label, required, width, helperText, type, options }) => (
           <Controller
             key={key}
-            name={`metadata.${key}`}
+            name={`dmp.metadata.${key}`}
             control={control}
-            render={({ field, fieldState }) => (
+            rules={required ? { required: `${label} は必須です` } : {}}
+            render={({ field, fieldState: { error } }) => (
               <FormControl fullWidth>
-                <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-                  <OurFormLabel label={label} required={required} />
-                </Box>
+                <OurFormLabel label={label} required={required} htmlFor={`metadata.${key}`} />
                 <TextField
                   {...field}
                   fullWidth
                   variant="outlined"
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message ?? helperText}
+                  error={!!error}
+                  helperText={error?.message ?? helperText}
                   sx={{ maxWidth: width }}
                   type={type === "date" ? "date" : "text"}
                   select={type === "select"}
                   size="small"
                 >
                   {type === "select" &&
-                    options!.map((opt) => (
-                      <MenuItem key={opt} value={opt}>
-                        {opt}
-                      </MenuItem>
+                    options!.map((option) => (
+                      <MenuItem key={option} value={option} children={option} />
                     ))}
                 </TextField>
               </FormControl>

@@ -25,7 +25,9 @@ export default function LoginCard({ sx }: LoginCardProps) {
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>()
+  } = useForm<FormValues>({
+    defaultValues: { token: "" },
+  })
   const [showToken, setShowToken] = useState(false)
   const setToken = useSetRecoilState(tokenAtom)
 
@@ -45,7 +47,7 @@ export default function LoginCard({ sx }: LoginCardProps) {
   }
 
   return (
-    <OurCard sx={{ ...sx }}>
+    <OurCard sx={sx}>
       <Typography sx={{ fontSize: "1.5rem" }} component="h1">
         {"GRDM との接続"}
       </Typography>
