@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom"
 
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
 import FormCard from "@/components/EditProject/FormCard"
+import GrdmCard from "@/components/EditProject/GrdmCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import { initDmp, DmpFormValues } from "@/dmp"
@@ -21,7 +22,7 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
   const dmpQuery = useDmp(projectId, isNew)
   const userQuery = useUser()
   const projectQuery = useProjectInfo(projectId, isNew)
-  const projectsQuery = useProjects(isNew) // if isNew, fetch all projects for validation
+  const projectsQuery = useProjects()
 
   const loading = dmpQuery.isLoading || userQuery.isLoading || projectQuery.isLoading || projectsQuery.isLoading
   const error = dmpQuery.error || userQuery.error || projectQuery.error || projectsQuery.error
@@ -65,21 +66,7 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
           project={projectQuery.data}
           projects={projectsQuery.data!}
         />
-        {/* <SectionHeader text="DMP 作成・更新情報" />
-          <DmpMetadataSection />
-
-          <SectionHeader text="Project Info" />
-          <ProjectInfoSection />
-
-          <SectionHeader text="Data Info" />
-          <DataInfoSection />
-
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "1.5rem" }}>
-            <Button type="submit" variant="contained" color="primary">
-              保存
-            </Button>
-          </Box> */}
-
+        <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data!} projects={projectsQuery.data!} />
         <ExportDmpCard sx={{ mt: "1.5rem" }} />
       </FormProvider>
     </Frame>

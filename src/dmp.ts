@@ -74,13 +74,18 @@ export const dataInfoSchema = z.object({
 })
 export type DataInfo = z.infer<typeof dataInfoSchema>
 
+export const linkedGrdmProjectSchema = z.object({
+  projectId: z.string(), // GRDM Project ID
+})
+export type LinkedGrdmProject = z.infer<typeof linkedGrdmProjectSchema>
+
 // DMP 全体の型
 export const dmpSchema = z.object({
   metadata: dmpMetadataSchema,
   projectInfo: projectInfoSchema,
   personInfo: z.array(personInfoSchema),
   dataInfo: z.array(dataInfoSchema),
-  linkedGrdmProjectIds: z.array(z.string()).optional(),
+  linkedGrdmProjects: z.array(linkedGrdmProjectSchema),
 })
 export type Dmp = z.infer<typeof dmpSchema>
 
@@ -120,7 +125,7 @@ export const initDmp = (user: User | null | undefined = null): Dmp => {
     },
     personInfo,
     dataInfo: [],
-    linkedGrdmProjectIds: [],
+    linkedGrdmProjects: [],
   }
 }
 

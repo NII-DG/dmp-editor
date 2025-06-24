@@ -8,16 +8,12 @@ import { tokenAtom } from "@/store/token"
  * Custom hook to fetch projects.
  * AuthHelper guarantees that token is always available.
  */
-export const useProjects = (fetch = true) => {
+export const useProjects = () => {
   const token = useRecoilValue(tokenAtom)
 
   return useQuery<ProjectInfo[], Error>({
     queryKey: ["projects", token],
-    queryFn: () => {
-      if (!fetch) return []
-
-      return listingProjects(token)
-    },
+    queryFn: () => listingProjects(token),
     enabled: !!token,
   })
 }

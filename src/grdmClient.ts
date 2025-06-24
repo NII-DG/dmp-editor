@@ -661,8 +661,22 @@ export const readDmpFile = async (token: string, projectId: string): Promise<{
 }> => {
   try {
     const { content, node } = await readFile(token, projectId, DMP_FILE_NAME)
+
+    // for 後方互換性
+    const dmpObj = JSON.parse(content)
+    if (dmpObj.linkedGrdmProjectIds) {
+      const ids = dmpObj.linkedGrdmProjectIds
+      dmpObj.linkedGrdmProjects = ids.map((id: string) => ({
+        projectId: id,
+      }))
+      delete dmpObj.linkedGrdmProjectIds
+    }
+    if (!dmpObj.linkedGrdmProjects) {
+      dmpObj.linkedGrdmProjects = []
+    }
+
     return {
-      dmp: dmpSchema.parse(JSON.parse(content)),
+      dmp: dmpSchema.parse(dmpObj),
       node,
     }
   } catch (error) {
@@ -716,5 +730,15 @@ export const createProject = async (token: string, projectName: string): Promise
     return nodeToProjectInfo(node)
   } catch (error) {
     throw new Error("Failed to create project", { cause: error })
+  }
+}
+
+export const listingFileNodes = async (token: string, projectId: string, folderNodeId: string | null, followPagination = false): Promise<GetFilesResponse> => {
+  if (folderNodeId) {
+    const url = `${GRDM_API_BASE_URL}/nodes/${projectId}/files/osfstorage/${folderNodeId}/`
+    return getFiles(token, url, followPagination)
+  } else {
+    const url = `${GRDM_API_BASE_URL}/nodes/${projectId}/files/osfstorage/`
+    return getFiles(token, url, followPagination)
   }
 }

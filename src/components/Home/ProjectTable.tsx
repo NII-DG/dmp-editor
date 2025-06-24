@@ -1,18 +1,5 @@
 import { EditOutlined, OpenInNew } from "@mui/icons-material"
-import {
-  Box,
-  Button,
-  Link,
-  Typography,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Paper,
-  colors,
-} from "@mui/material"
+import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useNavigate } from "react-router"
 
@@ -33,16 +20,16 @@ function ProjectTableHeader() {
   return (
     <TableHead sx={{ backgroundColor: colors.grey[100] }}>
       <TableRow>
-        <TableCell sx={{ fontWeight: "bold", textAlign: "left", p: "1rem 1rem", width: "50%" }}>
+        <TableCell sx={{ fontWeight: "bold", textAlign: "left", p: "0.5rem 1rem", width: "40%" }}>
           {"プロジェクト名"}
         </TableCell>
-        <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "1rem 1rem", width: "20%" }}>
+        <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
           {"作成日"}
         </TableCell>
-        <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "1rem 1rem", width: "20%" }}>
+        <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
           {"最終更新日"}
         </TableCell>
-        <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "1rem 1rem", width: "10%" }} />
+        <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem", width: "20%" }} />
       </TableRow>
     </TableHead>
   )
@@ -55,7 +42,7 @@ function ProjectTableRow({ project, user }: { project: ProjectInfo; user: User }
   const navigate = useNavigate()
   return (
     <TableRow key={project.id}>
-      <TableCell sx={{ textAlign: "left", p: "0.5rem 1rem", width: "50%" }}>
+      <TableCell sx={{ textAlign: "left", p: "0.5rem 1rem", width: "40%" }}>
         <Link
           href={project.html}
           target="_blank"
@@ -72,7 +59,7 @@ function ProjectTableRow({ project, user }: { project: ProjectInfo; user: User }
       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
         {formatDateToTimezone(project.dateModified, user.timezone)}
       </TableCell>
-      <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "10%" }}>
+      <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
         <Button
           variant="outlined"
           color="primary"
@@ -94,12 +81,12 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
   return (
     <OurCard sx={sx}>
       <Typography sx={{ fontSize: "1.5rem" }} component="h1">
-        DMP Project 一覧
+        {"DMP Project 一覧"}
       </Typography>
       <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1.5rem", mt: "0.5rem" }}>
         {filtered.length !== 0 ? (
           <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
-            <Typography>あなたの GRDM アカウントに紐づく DMP Project 一覧です。</Typography>
+            <Typography>{"あなたの GRDM アカウントに紐づく DMP Project 一覧です。"}</Typography>
             <Box sx={{ mt: "1rem" }}>
               <Button
                 variant="contained"
@@ -107,7 +94,7 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
                 onClick={() => navigate("/projects/new")}
                 sx={{ textTransform: "none" }}
               >
-                新規 DMP Project を作成する
+                {"新規 DMP Project を作成する"}
               </Button>
             </Box>
             <TableContainer component={Paper} variant="outlined" sx={{ borderBottom: "none", mt: "1.5rem" }}>
@@ -126,7 +113,7 @@ export default function ProjectTable({ sx, user, projects }: ProjectTableProps) 
             <Typography>Project がありません。</Typography>
             <Box sx={{ mt: "1rem" }}>
               <Button variant="contained" color="secondary" onClick={() => navigate("/projects/new")} sx={{ textTransform: "none" }}>
-                新規 DMP Project を作成する
+                {"新規 DMP Project を作成する"}
               </Button>
             </Box>
           </Box>
