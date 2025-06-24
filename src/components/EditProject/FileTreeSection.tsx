@@ -4,11 +4,12 @@ import { SxProps } from "@mui/system"
 import { TreeItem, SimpleTreeView } from "@mui/x-tree-view"
 import React, { useEffect, useMemo, useState } from "react"
 import { useWatch } from "react-hook-form"
+import { useRecoilValue } from "recoil"
 
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { DmpFormValues, LinkedGrdmProject } from "@/dmp"
-import { ProjectInfo } from "@/grdmClient"
-import { useFileNodes } from "@/hooks/useFileNodes"
+import { listingFileNodes, ProjectInfo } from "@/grdmClient"
+import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
 
 interface FileTreeSectionProps {
@@ -88,7 +89,31 @@ const basename = (path: string | undefined): string | undefined => {
   return parts.length > 0 ? parts[parts.length - 1] : ""
 }
 
+const isAlreadyFetched = (node: TreeNode): boolean => {
+  return !(node.children.length === 1 && node.children[0].type === "loading")
+}
+
+const fetchFileNodes = async (
+  token: string,
+  node: TreeNode,
+): Promise<TreeNode[]> => {
+  if (node.type === "loading" || node.type === "error" || node.type === "file") {
+    return []
+  }
+  const folderNodeId = node.type === "folder" ? node.nodeId : null
+  const res = await listingFileNodes(token, node.projectId, folderNodeId)
+
+  return res.data.map((resData) => ({
+    projectId: node.projectId,
+    nodeId: resData.id,
+    label: basename(resData.attributes.materialized_path) ?? resData.id,
+    children: resData.attributes.kind === "folder" ? [createLoadingNode(node.projectId)] : [],
+    type: resData.attributes.kind as TreeNodeType,
+  }))
+}
+
 export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) {
+  const token = useRecoilValue(tokenAtom)
   const linkedProjects = useWatch<DmpFormValues>({
     name: "dmp.linkedGrdmProjects",
     defaultValue: [],
@@ -97,27 +122,10 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     () => (linkedProjects as LinkedGrdmProject[]).map((p) => p.projectId) ?? [],
     [linkedProjects],
   )
-  const [tree, setTree] = useState<FileTree>([])
-  const [activeNode, setActiveNode] = useState<TreeNode | null>(null)
-  const fileNodesQuery = useFileNodes(
-    activeNode?.projectId ?? null,
-    activeNode?.nodeId ?? null,
-    (activeNode && (activeNode.type === "file" || activeNode.type === "folder" || activeNode.type === "project"))
-      ? activeNode.type
-      : null,
-  )
 
+  const [tree, setTree] = useState<FileTree>([])
   const [expanded, setExpanded] = useState<string[]>([])
-  const handleToggle = (_event: React.SyntheticEvent | null, nodeIds: string[]) => {
-    const newlyExpanded = nodeIds.find((id) => !expanded.includes(id))
-    if (newlyExpanded) {
-      const node = findNodeInTree(tree, newlyExpanded)
-      if (node && node.children.length === 1 && node.children[0].type === "loading") {
-        setActiveNode(node)
-      }
-    }
-    setExpanded(nodeIds)
-  }
+  const [loadingNodeIds, setLoadingNodeIds] = useState<Set<string>>(new Set())
 
   // Initialize tree with linked projects
   useEffect(() => {
@@ -125,9 +133,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       return linkedProjectIds.map((projectId) => {
         const project = projects.find((p) => p.id === projectId)
         if (!project) return null
-
         const prevNode = findNodeInTree(prevTree, projectId)
-        console.log("Called with projectId:", projectId, "prevNode:", prevNode)
         const children = prevNode?.children && prevNode.children.length > 0
           ? prevNode.children
           : [createLoadingNode(projectId)]
@@ -142,34 +148,34 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     })
   }, [linkedProjectIds, projects])
 
-  // Update tree (fetch children data) when activeNode changes
-  useEffect(() => {
-    if (!activeNode) return
+  const handleToggle = async (_event: React.SyntheticEvent | null, nodeIds: string[]) => {
+    const newlyExpandedNodeId = nodeIds.find((id) => !expanded.includes(id))
+    setExpanded(nodeIds)
+    if (!newlyExpandedNodeId) return
+    if (loadingNodeIds.has(newlyExpandedNodeId)) return
 
-    if (fileNodesQuery.isError) {
-      const errorNode = createErrorNode(activeNode.projectId)
-      setTree((prevTree) => updateNodeInTree(prevTree, activeNode, { children: [errorNode] }))
-      setActiveNode(null)
-      return
-    }
+    const node = findNodeInTree(tree, newlyExpandedNodeId)
+    if (node === null) return
+    if (isAlreadyFetched(node)) return
 
-    if (fileNodesQuery.data) {
-      console.log("Called with activeNode:", activeNode, "fileNodesQuery.data:", fileNodesQuery.data)
-      const children: TreeNode[] = fileNodesQuery.data.map((f) => ({
-        projectId: activeNode.projectId,
-        nodeId: f.nodeId,
-        label: basename(f.materialized_path) ?? f.nodeId,
-        children: f.type === "folder" ? [createLoadingNode(activeNode.projectId)] : [],
-        type: f.type as TreeNodeType,
-      }))
-      setTree((prevTree) =>
-        updateNodeInTree(prevTree, activeNode, {
-          children,
-        }),
-      )
-      setActiveNode(null)
-    }
-  }, [activeNode, fileNodesQuery.isError, fileNodesQuery.data])
+    setLoadingNodeIds((prev) => new Set(prev).add(node.nodeId))
+
+    fetchFileNodes(token, node)
+      .then((fetchedNodes) => {
+        setTree((prevTree) => updateNodeInTree(prevTree, node, { children: fetchedNodes }))
+      })
+      .catch(() => {
+        const errorNode = createErrorNode(node.projectId)
+        setTree((prevTree) => updateNodeInTree(prevTree, node, { children: [errorNode] }))
+      })
+      .finally(() => {
+        setLoadingNodeIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(node.nodeId)
+          return newSet
+        })
+      })
+  }
 
   const renderTree = (node: TreeNode): React.ReactNode => {
     const isError = node.type === "error"
@@ -201,7 +207,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       <Card sx={{ p: "0.5rem", mt: "1rem" }} variant="outlined">
         <SimpleTreeView
           expandedItems={expanded}
-          onExpandedItemsChange={handleToggle}
+          onExpandedItemsChange={(e, nodeIds) => handleToggle(e, nodeIds)}
           selectedItems={null}
           onItemClick={() => {
             //do nothing
