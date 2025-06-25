@@ -389,11 +389,11 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
   }
 
   // Linking Files
-  const [linkingFilesIndex, setLinkingFilesIndex] = useState<number | null>(null)
+  const [linkedGrdmFilesIndex, setLinkingFilesIndex] = useState<number | null>(null)
   const handleUnlinkLinkingFile = (dataInfoIndex: number, nodeId: string) => {
     const dataInfo = dataInfos[dataInfoIndex]
-    const newLinkingFiles = dataInfo.linkingFiles.filter((file) => file.nodeId !== nodeId)
-    const updatedDateInfo = { ...dataInfo, linkingFiles: newLinkingFiles }
+    const newLinkingFiles = dataInfo.linkedGrdmFiles.filter((file) => file.nodeId !== nodeId)
+    const updatedDateInfo = { ...dataInfo, linkedGrdmFiles: newLinkingFiles }
     update(dataInfoIndex, updatedDateInfo)
   }
 
@@ -407,10 +407,10 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
   }
 
   const renderLinkingFilesContent = () => {
-    if (linkingFilesIndex === null) return null
+    if (linkedGrdmFilesIndex === null) return null
 
-    const dataInfo = dataInfos[linkingFilesIndex]
-    const files = dataInfo.linkingFiles.filter((file) => file.type === "file")
+    const dataInfo = dataInfos[linkedGrdmFilesIndex]
+    const files = dataInfo.linkedGrdmFiles.filter((file) => file.type === "file")
     const totalSize = files.reduce((sum, file) => sum + (file.size || 0), 0)
 
     return (
@@ -481,7 +481,7 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
                         variant="outlined"
                         color={"warning"}
                         size="small"
-                        onClick={() => handleUnlinkLinkingFile(linkingFilesIndex, file.nodeId)}
+                        onClick={() => handleUnlinkLinkingFile(linkedGrdmFilesIndex, file.nodeId)}
                         startIcon={<LinkOffOutlined />}
                         sx={{ width: "130px" }}
                       >
@@ -584,7 +584,7 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
       />
 
       <Dialog
-        open={linkingFilesIndex !== null}
+        open={linkedGrdmFilesIndex !== null}
         onClose={() => setLinkingFilesIndex(null)}
         fullWidth
         maxWidth="lg"

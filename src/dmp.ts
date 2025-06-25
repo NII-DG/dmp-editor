@@ -66,7 +66,7 @@ export const fileNodeSchema: z.ZodType<LinkingFile> = z.object({
   date_created: z.string().nullable().optional(),
   hash_md5: z.string().nullable().optional(),
   hash_sha256: z.string().nullable().optional(),
-  type: z.enum(["file", "folder"]),
+  type: z.enum(["file"]),
   link: z.string().nullable().optional(),
 })
 
@@ -102,7 +102,7 @@ export const dataInfoSchema = z.object({
   dataStoragePeriod: z.string().nullable().optional(), // 研究データの保存期間 (研究事業終了後)
 
   // for linking with GRDM
-  linkingFiles: z.array(fileNodeSchema),
+  linkedGrdmFiles: z.array(fileNodeSchema),
 })
 export type DataInfo = z.infer<typeof dataInfoSchema>
 
@@ -200,7 +200,7 @@ export const initDataInfo = (): DataInfo => {
     dataManagerContact: "",
     dataStorageLocation: undefined,
     dataStoragePeriod: undefined,
-    linkingFiles: [],
+    linkedGrdmFiles: [],
   }
 }
 

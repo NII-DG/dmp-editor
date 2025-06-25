@@ -64,7 +64,7 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
   }
 
   const handleUnlinkProjectRequest = (projectId: string) => {
-    const isLinkedToFiles = dataInfos.some((info) => info.linkingFiles.some((file) => file.projectId === projectId))
+    const isLinkedToFiles = dataInfos.some((info) => info.linkedGrdmFiles.some((file) => file.projectId === projectId))
 
     if (isLinkedToFiles) {
       setPendingUnlinkProjectId(projectId)
@@ -78,10 +78,10 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
     if (!pendingUnlinkProjectId) return
 
     dataInfos.forEach((info, index) => {
-      const hasLinkedFileFromProject = info.linkingFiles.some((file) => file.projectId === pendingUnlinkProjectId)
+      const hasLinkedFileFromProject = info.linkedGrdmFiles.some((file) => file.projectId === pendingUnlinkProjectId)
       if (hasLinkedFileFromProject) {
-        const updatedFiles = info.linkingFiles.filter((file) => file.projectId !== pendingUnlinkProjectId)
-        updateDataInfo(index, { ...info, linkingFiles: updatedFiles })
+        const updatedFiles = info.linkedGrdmFiles.filter((file) => file.projectId !== pendingUnlinkProjectId)
+        updateDataInfo(index, { ...info, linkedGrdmFiles: updatedFiles })
       }
     })
 

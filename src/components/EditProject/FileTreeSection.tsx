@@ -135,8 +135,6 @@ const fetchFileNodes = async (
   const folderNodeId = node.type === "folder" ? node.nodeId : null
   const res = await listingFileNodes(token, node.projectId, folderNodeId)
 
-  console.log(JSON.stringify(res, null, 2))
-
   return res.data.map((resData) => ({
     projectId: node.projectId,
     nodeId: resData.id,
@@ -310,7 +308,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
   const renderTree = useCallback((node: TreeNode): React.ReactNode => {
     const isError = node.type === "error"
     const icon = prefixIcons[node.type]
-    const linkedDataInfoNum = dataInfos.filter((f) => f.linkingFiles.some((lf) => lf.nodeId === node.nodeId)).length
+    const linkedDataInfoNum = dataInfos.filter((f) => f.linkedGrdmFiles.some((lf) => lf.nodeId === node.nodeId)).length
 
     return (
       <TreeItem
@@ -374,8 +372,13 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
                 </>
               )}
             </Box>
-            {node.type !== "project" && node.type !== "loading" && node.type !== "error" && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {(node.type === "file" || node.type === "folder") && (
+              <Box sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "1rem",
+                mr: node.type !== "file" ? "5.05rem" : "0",
+              }}>
                 <Button
                   variant="outlined"
                   color="primary"
@@ -392,11 +395,13 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
                   <AddLinkOutlined fontSize="inherit" sx={{ mr: "0.5rem" }} />
                   {"関連付ける"}
                 </Button>
-                <Chip
-                  label={`Linked: ${linkedDataInfoNum}`}
-                  size="small"
-                  sx={{ height: "20px", fontSize: "0.75rem" }}
-                />
+                {node.type === "file" && (
+                  <Chip
+                    label={`Linked: ${linkedDataInfoNum}`}
+                    size="small"
+                    sx={{ height: "20px", fontSize: "0.75rem" }}
+                  />
+                )}
               </Box>
             )}
           </Box>
@@ -417,33 +422,35 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       if (!updatedNode) return
 
       const dataInfo = dataInfos[dataInfoIndex]
-      const existingNodeIds = dataInfo.linkingFiles.map((f) => f.nodeId)
+      const existingNodeIds = dataInfo.linkedGrdmFiles.map((f) => f.nodeId)
       const newFiles = allTreeNode([updatedNode])
+        .filter((n) => n.type === "file")
         .map(nodeToLinkingFile)
         .filter((f) => !existingNodeIds.includes(f.nodeId))
-      dataInfo.linkingFiles.push(...newFiles)
+      dataInfo.linkedGrdmFiles.push(...newFiles)
       update(dataInfoIndex, dataInfo)
     }
     const handleUnlinkFolderDataInfo = (dataInfoIndex: number) => {
       const removeNodeIds = allTreeNode([node]).map((n) => n.nodeId)
       const dataInfo = dataInfos[dataInfoIndex]
-      dataInfo.linkingFiles = dataInfo.linkingFiles.filter((f) => !removeNodeIds.includes(f.nodeId))
+      dataInfo.linkedGrdmFiles = dataInfo.linkedGrdmFiles.filter((f) => !removeNodeIds.includes(f.nodeId))
       update(dataInfoIndex, dataInfo)
     }
 
     const handleLinkFileDataInfo = (dataInfoIndex: number) => {
+      if (node.type !== "file") return
       const dataInfo = dataInfos[dataInfoIndex]
-      const existingNodeIds = dataInfo.linkingFiles.map((f) => f.nodeId)
+      const existingNodeIds = dataInfo.linkedGrdmFiles.map((f) => f.nodeId)
       const newFile = nodeToLinkingFile(node)
       if (!existingNodeIds.includes(newFile.nodeId)) {
-        dataInfo.linkingFiles.push(newFile)
+        dataInfo.linkedGrdmFiles.push(newFile)
         update(dataInfoIndex, dataInfo)
       }
     }
 
     const handleUnlinkFileDataInfo = (dataInfoIndex: number) => {
       const dataInfo = dataInfos[dataInfoIndex]
-      dataInfo.linkingFiles = dataInfo.linkingFiles.filter((f) => f.nodeId !== node.nodeId)
+      dataInfo.linkedGrdmFiles = dataInfo.linkedGrdmFiles.filter((f) => f.nodeId !== node.nodeId)
       update(dataInfoIndex, dataInfo)
     }
 
@@ -477,7 +484,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     }
 
     const renderFileButtons = (dataInfoIndex: number) => {
-      const found = dataInfos[dataInfoIndex].linkingFiles.some((f) => f.nodeId === node.nodeId)
+      const found = dataInfos[dataInfoIndex].linkedGrdmFiles.some((f) => f.nodeId === node.nodeId)
       return (
         <Button
           variant="outlined"
