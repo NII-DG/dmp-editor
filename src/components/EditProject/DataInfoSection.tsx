@@ -517,7 +517,6 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
             ))}
           </DialogContent>
           <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
-            <Button children="キャンセル" onClick={handleClose} variant="outlined" color="secondary" />
             <Button
               type="submit"
               children={openIndex === fields.length ? "追加" : "編集"}
@@ -526,6 +525,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
               disabled={isSubmitted && !isValid}
               onClick={dialogMethods.handleSubmit(handleDialogSubmit)}
             />
+            <Button children="キャンセル" onClick={handleClose} variant="outlined" color="secondary" />
           </DialogActions>
         </FormProvider>
       </Dialog>

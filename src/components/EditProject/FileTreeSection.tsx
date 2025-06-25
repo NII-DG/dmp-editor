@@ -1,8 +1,8 @@
-import { FolderSpecialOutlined, FolderOutlined, InsertDriveFileOutlined, ErrorOutline, AddLinkOutlined, LinkOffOutlined } from "@mui/icons-material"
-import { Box, Typography, Card, CircularProgress, Button, Dialog, DialogTitle, DialogContent, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip } from "@mui/material"
+import { FolderSpecialOutlined, FolderOutlined, InsertDriveFileOutlined, ErrorOutline, AddLinkOutlined, LinkOffOutlined, OpenInNew } from "@mui/icons-material"
+import { Box, Typography, Card, CircularProgress, Button, Dialog, DialogTitle, DialogContent, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip, Link, DialogActions } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { TreeItem, SimpleTreeView } from "@mui/x-tree-view"
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
 import { useRecoilValue } from "recoil"
 
@@ -33,6 +33,7 @@ interface TreeNode {
   date_created?: string | null
   hash_md5?: string | null
   hash_sha256?: string | null
+  link?: string | null
 }
 type FileTree = TreeNode[]
 
@@ -62,6 +63,18 @@ const findNodeInTree = (
   for (const node of tree) {
     if (node.nodeId === nodeId) return node
     const child = findNodeInTree(node.children, nodeId)
+    if (child) return child
+  }
+  return null
+}
+
+const findParentNodeInTree = (
+  tree: TreeNode[],
+  nodeId: string,
+): TreeNode | null => {
+  for (const node of tree) {
+    if (node.children.some((child) => child.nodeId === nodeId)) return node
+    const child = findParentNodeInTree(node.children, nodeId)
     if (child) return child
   }
   return null
@@ -99,7 +112,17 @@ const basename = (path: string | undefined): string | undefined => {
 }
 
 const isAlreadyFetched = (node: TreeNode): boolean => {
-  return !(node.children.length === 1 && node.children[0].type === "loading")
+  return !(node.children.length === 1 && (node.children[0].type === "loading" || node.children[0].type === "error"))
+}
+
+const downloadToLink = (download: string | undefined): string | null => {
+  if (!download) return null
+
+  const match = download.match(/\/download\/([^/]+)\/?$/)
+  if (!match) return null
+
+  const id = match[1]
+  return id.length === 5 ? download.replace("/download", "") : null
 }
 
 const fetchFileNodes = async (
@@ -125,6 +148,7 @@ const fetchFileNodes = async (
     date_created: resData.attributes.date_created,
     hash_md5: resData.attributes?.extra?.hashes?.md5,
     hash_sha256: resData.attributes?.extra?.hashes?.sha256,
+    link: downloadToLink(resData?.links?.download),
   }))
 }
 
@@ -159,7 +183,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     name: "dmp.linkedGrdmProjects",
     defaultValue: [],
   }) as LinkedGrdmProject[]
-  const linkedProjectIds = linkedProjects.map((p) => p.projectId)
+  const linkedProjectIds = useMemo(() => linkedProjects.map((p) => p.projectId), [linkedProjects])
 
   const [tree, setTree] = useState<FileTree>([])
   const [expanded, setExpanded] = useState<string[]>([])
@@ -257,10 +281,35 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     }
   }
 
+  const retryFetch = useCallback((node: TreeNode) => {
+    if (node.type !== "error") return
+    const parentNode = findParentNodeInTree(tree, node.nodeId)
+    if (!parentNode) return
+
+    setLoadingNodeIds((prev) => new Set(prev).add(parentNode.nodeId))
+
+    fetchFileNodes(token, parentNode)
+      .then((fetchedNodes) => {
+        setTree((prevTree) => updateNodeInTree(prevTree, parentNode, { children: fetchedNodes }))
+      })
+      .catch(() => {
+        const errorNode = createErrorNode(parentNode.projectId)
+        setTree((prevTree) => updateNodeInTree(prevTree, parentNode, { children: [errorNode] }))
+      })
+      .finally(() => {
+        setLoadingNodeIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(parentNode.nodeId)
+          return newSet
+        })
+      })
+  }, [token, tree])
+
   const renderTree = useCallback((node: TreeNode): React.ReactNode => {
     const isError = node.type === "error"
     const icon = prefixIcons[node.type]
     const linkedDataInfoNum = dataInfos.filter((f) => f.linkingFiles.some((lf) => lf.nodeId === node.nodeId)).length
+
     return (
       <TreeItem
         key={node.nodeId}
@@ -269,9 +318,52 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               {icon}
-              <Typography color={isError ? "error.main" : "text.primary"} variant="body2">
-                {node.label}
-              </Typography>
+              {node.type === "file" && node.link ? (
+                <Link
+                  href={node.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    textDecoration: "none",
+                    color: "text.primary",
+                    fontSize: "0.875rem",
+                    "&:hover": {
+                      textDecoration: "underline",
+                    },
+                  }}
+                >
+                  {node.label}
+                  <OpenInNew sx={{ fontSize: "1rem" }} />
+                </Link>
+              ) : (
+                <>
+                  <Typography color={isError ? "error.main" : "text.primary"} variant="body2">
+                    {node.label}
+                  </Typography>
+                  {node.type === "error" && (
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        retryFetch(node)
+                      }}
+                      sx={{
+                        p: "4px",
+                        height: "24px",
+                        ml: "0.5rem",
+                      }}
+                    >
+                      {"再試行"}
+                    </Button>
+                  )}
+                </>
+              )}
             </Box>
             {node.type !== "project" && node.type !== "loading" && node.type !== "error" && (
               <Box sx={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -304,7 +396,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
         {node.children.map((child) => renderTree(child))}
       </TreeItem>
     )
-  }, [dataInfos, setOpenNodeId])
+  }, [dataInfos, setOpenNodeId, retryFetch])
 
   const renderDialogContent = () => {
     if (openNodeId === null) return null
@@ -339,6 +431,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
         update(dataInfoIndex, dataInfo)
       }
     }
+
     const handleUnlinkFileDataInfo = (dataInfoIndex: number) => {
       const dataInfo = dataInfos[dataInfoIndex]
       dataInfo.linkingFiles = dataInfo.linkingFiles.filter((f) => f.nodeId !== node.nodeId)
@@ -486,15 +579,16 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
         </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
           {renderDialogContent()}
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleDialogClose}
-            sx={{ mt: "1rem" }}
-          >
-            {"閉じる"}
-          </Button>
         </DialogContent>
+        <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handleDialogClose}
+          >
+            {"キャンセル"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   )

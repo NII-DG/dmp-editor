@@ -1,7 +1,8 @@
 import { AddLinkOutlined, LinkOffOutlined, OpenInNew } from "@mui/icons-material"
-import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors } from "@mui/material"
+import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { useFieldArray, useFormContext } from "react-hook-form"
+import { useState } from "react"
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
 
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { DmpFormValues } from "@/dmp"
@@ -24,6 +25,17 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
   const linkedProjectIds = fields.map((p) => p.projectId)
   const filtered = projects.filter((p) => !p.title.startsWith(DMP_PROJECT_PREFIX))
 
+  const { update: updateDataInfo } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
+    control,
+    name: "dmp.dataInfo",
+  })
+  const dataInfos = useWatch<DmpFormValues>({
+    name: "dmp.dataInfo",
+    defaultValue: [],
+  }) as DmpFormValues["dmp"]["dataInfo"]
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [pendingUnlinkProjectId, setPendingUnlinkProjectId] = useState<string | null>(null)
+
   const handleLinkProject = (projectId: string) => {
     const existingProject = fields.find((p) => p.projectId === projectId)
     if (existingProject) return
@@ -45,6 +57,38 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
     if (index !== -1) {
       remove(index)
     }
+  }
+
+  const handleUnlinkProjectRequest = (projectId: string) => {
+    const isLinkedToFiles = dataInfos.some((info) => info.linkingFiles.some((file) => file.projectId === projectId))
+
+    if (isLinkedToFiles) {
+      setPendingUnlinkProjectId(projectId)
+      setConfirmDialogOpen(true)
+    } else {
+      handleUnlinkProject(projectId)
+    }
+  }
+
+  const confirmUnlinkProject = () => {
+    if (!pendingUnlinkProjectId) return
+
+    dataInfos.forEach((info, index) => {
+      const hasLinkedFileFromProject = info.linkingFiles.some((file) => file.projectId === pendingUnlinkProjectId)
+      if (hasLinkedFileFromProject) {
+        const updatedFiles = info.linkingFiles.filter((file) => file.projectId !== pendingUnlinkProjectId)
+        updateDataInfo(index, { ...info, linkingFiles: updatedFiles })
+      }
+    })
+
+    handleUnlinkProject(pendingUnlinkProjectId)
+    setConfirmDialogOpen(false)
+    setPendingUnlinkProjectId(null)
+  }
+
+  const cancelUnlinkProject = () => {
+    setConfirmDialogOpen(false)
+    setPendingUnlinkProjectId(null)
   }
 
   return (
@@ -94,7 +138,7 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
                     }
                     size="small"
                     onClick={linkedProjectIds.includes(project.id) ?
-                      () => handleUnlinkProject(project.id) :
+                      () => handleUnlinkProjectRequest(project.id) :
                       () => handleLinkProject(project.id)
                     }
                     startIcon={linkedProjectIds.includes(project.id) ?
@@ -115,6 +159,41 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        closeAfterTransition={false}
+      >
+        <DialogTitle sx={{ mt: "0.5rem", mx: "1rem" }}>
+          {"DMP と GRDM との関連付けの解除"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <Typography>
+              {"この GRDM プロジェクト内のファイルが、DMP の研究データ情報にリンクされています。"}
+              <br />
+              {"関連付けを解除すると、これらのリンクは削除されます。"}
+              <br />
+              <span style={{ fontWeight: "bold" }}>
+                {"本当に関連付けを解除しますか？"}
+              </span>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={confirmUnlinkProject}
+          >
+            {"解除する"}
+          </Button>
+          <Button children="キャンセル" onClick={cancelUnlinkProject} variant="outlined" color="secondary" />
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

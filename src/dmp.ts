@@ -53,6 +53,7 @@ export interface LinkingFile {
   hash_md5?: string | null
   hash_sha256?: string | null
   type: "file" | "folder"
+  link?: string | null // URL to the GRDM page (only for file nodes)
 }
 export const fileNodeSchema: z.ZodType<LinkingFile> = z.object({
   projectId: z.string(),
@@ -66,6 +67,7 @@ export const fileNodeSchema: z.ZodType<LinkingFile> = z.object({
   hash_md5: z.string().nullable().optional(),
   hash_sha256: z.string().nullable().optional(),
   type: z.enum(["file", "folder"]),
+  link: z.string().nullable().optional(),
 })
 
 // 研究データ情報
