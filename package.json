@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run --root ."
+    "test:lint": "eslint .",
+    "test:typecheck": "tsc --noEmit",
+    "test:vitest": "vitest run --root .",
+    "ci": "npm run test:lint && npm run test:typecheck && npm run test:vitest && npm run build"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
