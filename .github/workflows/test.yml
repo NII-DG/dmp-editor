@@ -16,4 +16,23 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci
-      - run: npm run ci
+
+      - id: lint
+        run: npm run test:lint
+        continue-on-error: true
+
+      - id: typecheck
+        run: npm run test:typecheck
+        continue-on-error: true
+
+      - id: smoketest
+        run: npm run test:vitest
+        continue-on-error: true
+
+      - id: build
+        run: npm run build
+        continue-on-error: true
+
+      - name: "Fail if any previous step failed"
+        if: ${{ failure() || steps.lint.outcome == 'failure' || steps.typecheck.outcome == 'failure' || steps.smoketest.outcome == 'failure' || steps.build.outcome == 'failure' }}
+        run: exit 1
