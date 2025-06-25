@@ -1,8 +1,8 @@
 import { AddOutlined, EditOutlined, DeleteOutline, ArrowUpwardOutlined, ArrowDownwardOutlined } from "@mui/icons-material"
-import { Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Chip, Select, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, FormHelperText } from "@mui/material"
+import { Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Chip, Select, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, FormHelperText, Typography } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
-import { useFormContext, useFieldArray, Controller, useForm, FormProvider, useFormState } from "react-hook-form"
+import { useFormContext, useFieldArray, Controller, useForm, FormProvider, useFormState, useWatch } from "react-hook-form"
 
 import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
@@ -68,10 +68,14 @@ interface PersonInfoSectionProps {
 
 export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
   const { control } = useFormContext<DmpFormValues>()
-  const { fields, append, remove, move, update } = useFieldArray<DmpFormValues, "dmp.personInfo">({
+  const { append, remove, move, update } = useFieldArray<DmpFormValues, "dmp.personInfo">({
     control,
     name: "dmp.personInfo",
   })
+  const personInfos = useWatch<DmpFormValues>({
+    name: "dmp.personInfo",
+    defaultValue: [],
+  }) as DmpFormValues["dmp"]["personInfo"]
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const dialogMethods = useForm<PersonInfo>({
@@ -84,10 +88,10 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
   })
 
   const handleOpen = (index: number) => {
-    if (index === fields.length) {
+    if (index === personInfos.length) {
       dialogMethods.reset(initPersonInfo())
     } else {
-      dialogMethods.reset(fields[index] as PersonInfo)
+      dialogMethods.reset(personInfos[index] as PersonInfo)
     }
     setOpenIndex(index)
   }
@@ -96,7 +100,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
 
   const handleDialogSubmit = (data: PersonInfo) => {
     if (openIndex === null) return
-    if (openIndex === fields.length) {
+    if (openIndex === personInfos.length) {
       append(data)
     } else {
       update(openIndex, data)
@@ -118,6 +122,33 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
       newValue = undefined as PersonInfo[K]
     }
     dialogMethods.setValue(key, newValue as never)
+  }
+
+  // Delete Dialog
+  const { update: updateDataInfo } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
+    control,
+    name: "dmp.dataInfo",
+  })
+  const dataInfos = useWatch<DmpFormValues>({
+    name: "dmp.dataInfo",
+    defaultValue: [],
+  }) as DmpFormValues["dmp"]["dataInfo"]
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null)
+  const confirmDelete = () => {
+    if (pendingDeleteIndex !== null) {
+      dataInfos.forEach((info, index) => {
+        if (info?.dataCreator === undefined || info?.dataCreator === null) return
+        if (info.dataCreator === pendingDeleteIndex) {
+          updateDataInfo(index, {
+            ...info,
+            dataCreator: undefined,
+          })
+        }
+      })
+
+      remove(pendingDeleteIndex)
+      setPendingDeleteIndex(null)
+    }
   }
 
   return (
@@ -142,7 +173,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {fields.map((personInfo, index) => (
+            {personInfos.map((personInfo, index) => (
               <TableRow key={index}>
                 <TableCell children={personInfo.role.join(", ")} sx={{ p: "0.5rem 1rem" }} />
                 <TableCell children={`${personInfo.lastName} ${personInfo.firstName}`} sx={{ p: "0.5rem 1rem" }} />
@@ -166,7 +197,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
                     startIcon={<ArrowDownwardOutlined />}
                     onClick={() => move(index, index + 1)}
                     sx={{ textTransform: "none" }}
-                    disabled={index === fields.length - 1}
+                    disabled={index === personInfos.length - 1}
                   />
                   <Button
                     variant="outlined"
@@ -180,7 +211,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
                     color="error"
                     children={"削除"}
                     startIcon={<DeleteOutline />}
-                    onClick={() => remove(index)}
+                    onClick={() => setPendingDeleteIndex(index)}
                   />
                 </TableCell>
               </TableRow>
@@ -192,10 +223,43 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
       <Button
         variant="outlined"
         color="primary"
-        onClick={() => handleOpen(fields.length)} sx={{ width: "180px", mt: "1rem" }}
+        onClick={() => handleOpen(personInfos.length)} sx={{ width: "180px", mt: "1rem" }}
         children="担当者を追加する"
         startIcon={<AddOutlined />}
       />
+
+      <Dialog
+        open={pendingDeleteIndex !== null}
+        onClose={() => setPendingDeleteIndex(null)}
+        fullWidth
+        maxWidth="sm"
+        closeAfterTransition={false}
+      >
+        <DialogTitle sx={{ mt: "0.5rem", mx: "1rem" }}>
+          {"この担当者情報を削除しますか？"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <Typography>
+              {"担当者情報を削除すると、関連する研究データ情報も削除されます。"}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={confirmDelete}
+            children="削除する"
+          />
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setPendingDeleteIndex(null)}
+            children="キャンセル"
+          />
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={openIndex !== null}
@@ -206,7 +270,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
       >
         <FormProvider {...dialogMethods}>
           <DialogTitle
-            children={openIndex === fields.length ? "担当者の追加" : "担当者の編集"}
+            children={openIndex === personInfos.length ? "担当者の追加" : "担当者の編集"}
             sx={{ mt: "0.5rem", mx: "1rem" }}
           />
           <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
@@ -273,7 +337,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
           <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
             <Button
               type="submit"
-              children={openIndex === fields.length ? "追加" : "編集"}
+              children={openIndex === personInfos.length ? "追加" : "編集"}
               variant="contained"
               color="secondary"
               disabled={isSubmitted && !isValid}

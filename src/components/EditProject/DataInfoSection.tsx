@@ -1,5 +1,5 @@
-import { AddOutlined, ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutline, EditOutlined } from "@mui/icons-material"
-import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, FormControl, Chip, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, Select, FormHelperText } from "@mui/material"
+import { AddOutlined, ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutline, EditOutlined, AddLinkOutlined, OpenInNew, LinkOffOutlined } from "@mui/icons-material"
+import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, FormControl, Chip, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, Select, FormHelperText, Typography, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
 import React, { useState } from "react"
 import { useFormContext, useFieldArray, Controller, useForm, useFormState, FormProvider, useWatch } from "react-hook-form"
@@ -9,6 +9,8 @@ import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { accessRights, dataType, hasSensitiveData, initDataInfo, researchField } from "@/dmp"
 import type { DataInfo, DmpFormValues } from "@/dmp"
+import { formatDateToTimezone, ProjectInfo } from "@/grdmClient"
+import { User } from "@/hooks/useUser"
 import theme from "@/theme"
 
 interface FormData {
@@ -272,16 +274,37 @@ const formData: FormData[] = [
   },
 ]
 
-interface DataInfoSectionProps {
-  sx?: SxProps
+const byteSizeToHumanReadable = (size?: number | null, decimals = 2): string => {
+  if (typeof size !== "number" || !isFinite(size) || size < 0) return "N/A"
+
+  const units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]
+  let i = 0
+  let readableSize = size
+
+  while (readableSize >= 1024 && i < units.length - 1) {
+    readableSize /= 1024
+    i++
+  }
+
+  return `${readableSize.toFixed(i === 0 ? 0 : decimals)} ${units[i]}`
 }
 
-export default function DataInfoSection({ sx }: DataInfoSectionProps) {
+interface DataInfoSectionProps {
+  sx?: SxProps
+  user: User
+  projects: ProjectInfo[]
+}
+
+export default function DataInfoSection({ sx, user, projects }: DataInfoSectionProps) {
   const { control } = useFormContext<DmpFormValues>()
-  const { fields, append, remove, move, update } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
+  const { append, remove, move, update } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
     control,
     name: "dmp.dataInfo",
   })
+  const dataInfos = useWatch<DmpFormValues>({
+    name: "dmp.dataInfo",
+    defaultValue: [],
+  }) as DmpFormValues["dmp"]["dataInfo"]
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const dialogMethods = useForm<DataInfo>({
@@ -300,10 +323,10 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
   const personNames = personInfo.map((person) => `${person.lastName} ${person.firstName}`.trim())
 
   const handleOpen = (index: number) => {
-    if (index === fields.length) {
+    if (index === dataInfos.length) {
       dialogMethods.reset(initDataInfo())
     } else {
-      dialogMethods.reset(fields[index] as DataInfo)
+      dialogMethods.reset(dataInfos[index] as DataInfo)
     }
     setOpenIndex(index)
   }
@@ -312,7 +335,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
 
   const handleDialogSubmit = (data: DataInfo) => {
     if (openIndex === null) return
-    if (openIndex === fields.length) {
+    if (openIndex === dataInfos.length) {
       append(data)
     } else {
       update(openIndex, data)
@@ -365,6 +388,116 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
     return {}
   }
 
+  // Linking Files
+  const [linkingFilesIndex, setLinkingFilesIndex] = useState<number | null>(null)
+  const handleUnlinkLinkingFile = (dataInfoIndex: number, nodeId: string) => {
+    const dataInfo = dataInfos[dataInfoIndex]
+    const newLinkingFiles = dataInfo.linkingFiles.filter((file) => file.nodeId !== nodeId)
+    const updatedDateInfo = { ...dataInfo, linkingFiles: newLinkingFiles }
+    update(dataInfoIndex, updatedDateInfo)
+  }
+
+  // Delete Dialog
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null)
+  const confirmDelete = () => {
+    if (pendingDeleteIndex !== null) {
+      remove(pendingDeleteIndex)
+      setPendingDeleteIndex(null)
+    }
+  }
+
+  const renderLinkingFilesContent = () => {
+    if (linkingFilesIndex === null) return null
+
+    const dataInfo = dataInfos[linkingFilesIndex]
+    const files = dataInfo.linkingFiles.filter((file) => file.type === "file")
+    const totalSize = files.reduce((sum, file) => sum + (file.size || 0), 0)
+
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <Typography>
+          {"この研究データ情報に関連付けられた GRDM ファイルは以下の通りです。"}
+          <br />
+          {"新たに GRDM ファイルを関連付ける場合は、ファイルツリーからファイルを選択してください。"}
+        </Typography>
+
+        <Typography sx={{ fontWeight: "bold" }}>
+          {"データセットの総データサイズ: "}
+          {byteSizeToHumanReadable(totalSize)}
+        </Typography>
+
+        <TableContainer component={Paper} variant="outlined" sx={{ borderBottom: "none" }}>
+          <Table>
+            <TableHead sx={{ backgroundColor: colors.grey[100] }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "left", p: "0.5rem 1rem" }}>{"プロジェクト名"}</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "left", p: "0.5rem 1rem" }}>{"ファイルパス"}</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "left", p: "0.5rem 1rem" }}>{"サイズ"}</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem" }}>{"作成日"}</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem" }}>{"最終更新日"}</TableCell>
+                <TableCell sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem" }} />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {files.map((file, index) => {
+                const project = projects.find((p) => p.id === file.projectId)
+                return (
+                  <TableRow key={index}>
+                    <TableCell sx={{ p: "0.5rem 1rem" }}>
+                      {project ? (
+                        <Link
+                          href={project.html}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}
+                        >
+                          {project.title}
+                          <OpenInNew sx={{ fontSize: "1rem" }} />
+                        </Link>
+                      ) :
+                        "Unknown Project"
+                      }
+                    </TableCell>
+                    <TableCell sx={{ p: "0.5rem 1rem", fontFamily: "monospace" }}>{file.materialized_path}</TableCell>
+                    <TableCell sx={{ p: "0.5rem 1rem" }}>
+                      {byteSizeToHumanReadable(file.size)}
+                    </TableCell>
+                    <TableCell sx={{ p: "0.5rem 1rem", textAlign: "center" }}>
+                      {
+                        file.date_created ?
+                          formatDateToTimezone(file.date_created, user.timezone) :
+                          "N/A"
+                      }
+                    </TableCell>
+                    <TableCell sx={{ p: "0.5rem 1rem", textAlign: "center" }}>
+                      {
+                        file.date_modified ?
+                          formatDateToTimezone(file.date_modified, user.timezone) :
+                          "N/A"
+                      }
+                    </TableCell>
+                    <TableCell sx={{ p: "0.5rem 1rem", textAlign: "center" }}>
+                      <Button
+                        variant="outlined"
+                        color={"warning"}
+                        size="small"
+                        onClick={() => handleUnlinkLinkingFile(linkingFilesIndex, file.nodeId)}
+                        startIcon={<LinkOffOutlined />}
+                        sx={{ width: "130px" }}
+                      >
+                        {"関連付け解除"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="研究データ情報" />
@@ -377,7 +510,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
         <Table sx={{ minWidth: theme.breakpoints.values.md }}>
           <TableHead sx={{ backgroundColor: colors.grey[100] }}>
             <TableRow>
-              {["名称", "分野", "種別", ""].map((header, index) => (
+              {["名称", "分野", "種別", "", ""].map((header, index) => (
                 <TableCell
                   key={index}
                   children={header}
@@ -387,11 +520,21 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {fields.map((dataInfo, index) => (
+            {dataInfos.map((dataInfo, index) => (
               <TableRow key={index}>
                 <TableCell children={dataInfo.dataName} sx={{ p: "0.5rem 1rem" }} />
                 <TableCell children={dataInfo.researchField} sx={{ p: "0.5rem 1rem" }} />
                 <TableCell children={dataInfo.dataType} sx={{ p: "0.5rem 1rem" }} />
+                <TableCell sx={{ p: "0.5rem 1rem" }} align="right">
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    children={"関連ファイル"}
+                    startIcon={<AddLinkOutlined />}
+                    onClick={() => setLinkingFilesIndex(index)}
+                    sx={{ textTransform: "none" }}
+                  />
+                </TableCell>
                 <TableCell sx={{ display: "flex", flexDirection: "row", gap: "1rem", p: "0.5rem 1rem", justifyContent: "flex-end" }} align="right">
                   <Button
                     variant="outlined"
@@ -409,7 +552,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
                     startIcon={<ArrowDownwardOutlined />}
                     onClick={() => move(index, index + 1)}
                     sx={{ textTransform: "none" }}
-                    disabled={index === fields.length - 1}
+                    disabled={index === dataInfos.length - 1}
                   />
                   <Button
                     variant="outlined"
@@ -423,7 +566,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
                     color="error"
                     children={"削除"}
                     startIcon={<DeleteOutline />}
-                    onClick={() => remove(index)}
+                    onClick={() => setPendingDeleteIndex(index)}
                   />
                 </TableCell>
               </TableRow>
@@ -435,10 +578,66 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
       <Button
         variant="outlined"
         color="primary"
-        onClick={() => handleOpen(fields.length)} sx={{ width: "180px", mt: "1rem" }}
+        onClick={() => handleOpen(dataInfos.length)} sx={{ width: "180px", mt: "1rem" }}
         children="データを追加する"
         startIcon={<AddOutlined />}
       />
+
+      <Dialog
+        open={linkingFilesIndex !== null}
+        onClose={() => setLinkingFilesIndex(null)}
+        fullWidth
+        maxWidth="lg"
+        closeAfterTransition={false}
+      >
+        <DialogTitle sx={{ mt: "0.5rem", mx: "1rem" }}>
+          {"関連付けられた GRDM ファイル"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
+          {renderLinkingFilesContent()}
+        </DialogContent>
+        <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setLinkingFilesIndex(null)}
+            children="閉じる"
+          />
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={pendingDeleteIndex !== null}
+        onClose={() => setPendingDeleteIndex(null)}
+        fullWidth
+        maxWidth="sm"
+        closeAfterTransition={false}
+      >
+        <DialogTitle sx={{ mt: "0.5rem", mx: "1rem" }}>
+          {"この研究データ情報を削除しますか？"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <Typography>
+              {"研究データ情報を削除すると、GRDM File との関連付けも解除されます。"}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={confirmDelete}
+            children="削除する"
+          />
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => setPendingDeleteIndex(null)}
+            children="キャンセル"
+          />
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={openIndex !== null}
@@ -449,7 +648,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
       >
         <FormProvider {...dialogMethods}>
           <DialogTitle
-            children={openIndex === fields.length ? "管理対象データの追加" : "管理対象データの編集"}
+            children={openIndex === dataInfos.length ? "管理対象データの追加" : "管理対象データの編集"}
             sx={{ mt: "0.5rem", mx: "1rem" }}
           />
           <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
@@ -519,7 +718,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
           <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
             <Button
               type="submit"
-              children={openIndex === fields.length ? "追加" : "編集"}
+              children={openIndex === dataInfos.length ? "追加" : "編集"}
               variant="contained"
               color="secondary"
               disabled={isSubmitted && !isValid}

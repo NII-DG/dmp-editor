@@ -14,16 +14,18 @@ import OurCard from "@/components/OurCard"
 import { DmpFormValues } from "@/dmp"
 import { ProjectInfo } from "@/grdmClient"
 import { useUpdateDmp } from "@/hooks/useUpdateDmp"
+import { User } from "@/hooks/useUser"
 import { getErrorChain } from "@/utils"
 
 export interface FormCardProps {
   sx?: SxProps
   isNew: boolean
+  user: User
   project?: ProjectInfo | null
   projects: ProjectInfo[]
 }
 
-export default function FormCard({ sx, isNew = false, project, projects }: FormCardProps) {
+export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const { getValues, handleSubmit, formState } = useFormContext<DmpFormValues>()
@@ -79,7 +81,7 @@ export default function FormCard({ sx, isNew = false, project, projects }: FormC
           <Divider sx={{ my: "1.5rem" }} />
           <PersonInfoSection />
           <Divider sx={{ my: "1.5rem" }} />
-          <DataInfoSection />
+          <DataInfoSection user={user} projects={projects} />
         </Box>
         <Divider sx={{ my: "1.5rem" }} />
         <Box sx={{ display: "flex", flexDirection: "row", mt: "1.5rem" }}>

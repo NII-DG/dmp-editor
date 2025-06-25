@@ -17,12 +17,16 @@ interface ProjectTableProps {
 
 export default function ProjectTableSection({ sx, user, projects }: ProjectTableProps) {
   const { control } = useFormContext<DmpFormValues>()
-  const { fields, insert, remove } = useFieldArray<DmpFormValues, "dmp.linkedGrdmProjects">({
+  const { insert, remove } = useFieldArray<DmpFormValues, "dmp.linkedGrdmProjects">({
     control,
     name: "dmp.linkedGrdmProjects",
   })
+  const linkingProjects = useWatch<DmpFormValues>({
+    name: "dmp.linkedGrdmProjects",
+    defaultValue: [],
+  }) as DmpFormValues["dmp"]["linkedGrdmProjects"]
 
-  const linkedProjectIds = fields.map((p) => p.projectId)
+  const linkedProjectIds = linkingProjects.map((p) => p.projectId)
   const filtered = projects.filter((p) => !p.title.startsWith(DMP_PROJECT_PREFIX))
 
   const { update: updateDataInfo } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
@@ -37,13 +41,13 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
   const [pendingUnlinkProjectId, setPendingUnlinkProjectId] = useState<string | null>(null)
 
   const handleLinkProject = (projectId: string) => {
-    const existingProject = fields.find((p) => p.projectId === projectId)
+    const existingProject = linkingProjects.find((p) => p.projectId === projectId)
     if (existingProject) return
 
     const indexInProjects = filtered.findIndex((p) => p.id === projectId)
-    let insertIndex = fields.length
-    for (let i = 0; i < fields.length; i++) {
-      const currentProjectIndex = filtered.findIndex((p) => p.id === fields[i].projectId)
+    let insertIndex = linkingProjects.length
+    for (let i = 0; i < linkingProjects.length; i++) {
+      const currentProjectIndex = filtered.findIndex((p) => p.id === linkingProjects[i].projectId)
       if (currentProjectIndex > indexInProjects) {
         insertIndex = i
         break
@@ -53,7 +57,7 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
   }
 
   const handleUnlinkProject = (projectId: string) => {
-    const index = fields.findIndex((p) => p.projectId === projectId)
+    const index = linkingProjects.findIndex((p) => p.projectId === projectId)
     if (index !== -1) {
       remove(index)
     }

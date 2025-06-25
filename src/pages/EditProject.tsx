@@ -63,6 +63,7 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
         <FormCard
           sx={{ mt: "1.5rem" }}
           isNew={isNew}
+          user={userQuery.data!}
           project={projectQuery.data}
           projects={projectsQuery.data!}
         />

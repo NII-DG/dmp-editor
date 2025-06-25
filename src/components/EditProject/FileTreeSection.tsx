@@ -334,6 +334,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
                     "&:hover": {
                       textDecoration: "underline",
                     },
+                    fontFamily: node.type === "file" || node.type === "folder" ? "monospace" : "inherit",
                   }}
                 >
                   {node.label}
@@ -341,7 +342,13 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
                 </Link>
               ) : (
                 <>
-                  <Typography color={isError ? "error.main" : "text.primary"} variant="body2">
+                  <Typography
+                    color={isError ? "error.main" : "text.primary"}
+                    variant="body2"
+                    sx={{
+                      fontFamily: node.type === "file" || node.type === "folder" ? "monospace" : "inherit",
+                    }}
+                  >
                     {node.label}
                   </Typography>
                   {node.type === "error" && (
@@ -492,7 +499,10 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     return (
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <Typography>
-          {`"${node.materialized_path}" を関連付ける DMP 研究データを選択してください。`}
+          <Typography component="span" sx={{ fontFamily: "monospace" }}>
+            {node.materialized_path ?? node.label}
+          </Typography>
+          {" を関連付ける DMP 研究データを選択してください。"}
         </Typography>
         {node.type === "folder" && (
           <Typography>
