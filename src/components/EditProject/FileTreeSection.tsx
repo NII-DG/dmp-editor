@@ -135,6 +135,8 @@ const fetchFileNodes = async (
   const folderNodeId = node.type === "folder" ? node.nodeId : null
   const res = await listingFileNodes(token, node.projectId, folderNodeId)
 
+  console.log(JSON.stringify(res, null, 2))
+
   return res.data.map((resData) => ({
     projectId: node.projectId,
     nodeId: resData.id,

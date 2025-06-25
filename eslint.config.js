@@ -4,6 +4,7 @@ import eslintPluginImport from "eslint-plugin-import"
 import react from "eslint-plugin-react"
 import reactHooks from "eslint-plugin-react-hooks"
 import reactRefresh from "eslint-plugin-react-refresh"
+import vitest from "eslint-plugin-vitest"
 import globals from "globals"
 import tseslint, { configs as tseslintConfigs } from "typescript-eslint"
 
@@ -98,6 +99,19 @@ export default tseslint.config(
       "import/newline-after-import": "error",
       "import/no-duplicates": "error",
       "import/no-unresolved": "off",
+    },
+  },
+  // for vitest
+  {
+    files: ["**/*.test.{js,ts,tsx}"],
+    plugins: { vitest },
+    rules: {
+      ...vitest.configs.recommended.rules,
+    },
+    languageOptions: {
+      globals: {
+        ...vitest.environments.env.globals,
+      },
     },
   },
 )
