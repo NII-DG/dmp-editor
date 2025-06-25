@@ -1,13 +1,13 @@
-import { FolderSpecialOutlined, FolderOutlined, InsertDriveFileOutlined, ErrorOutline } from "@mui/icons-material"
-import { Box, Typography, Card, CircularProgress } from "@mui/material"
+import { FolderSpecialOutlined, FolderOutlined, InsertDriveFileOutlined, ErrorOutline, AddLinkOutlined, LinkOffOutlined } from "@mui/icons-material"
+import { Box, Typography, Card, CircularProgress, Button, Dialog, DialogTitle, DialogContent, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { TreeItem, SimpleTreeView } from "@mui/x-tree-view"
-import React, { useEffect, useMemo, useState } from "react"
-import { useWatch } from "react-hook-form"
+import React, { useCallback, useEffect, useState } from "react"
+import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
 import { useRecoilValue } from "recoil"
 
 import SectionHeader from "@/components/EditProject/SectionHeader"
-import { DmpFormValues, LinkedGrdmProject } from "@/dmp"
+import { DmpFormValues, LinkingFile, LinkedGrdmProject } from "@/dmp"
 import { listingFileNodes, ProjectInfo } from "@/grdmClient"
 import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
@@ -24,6 +24,15 @@ interface TreeNode {
   label: string
   children: TreeNode[]
   type: TreeNodeType
+
+  // metadata
+  size?: number | null
+  materialized_path?: string | null
+  last_touched?: string | null
+  date_modified?: string | null
+  date_created?: string | null
+  hash_md5?: string | null
+  hash_sha256?: string | null
 }
 type FileTree = TreeNode[]
 
@@ -109,7 +118,39 @@ const fetchFileNodes = async (
     label: basename(resData.attributes.materialized_path) ?? resData.id,
     children: resData.attributes.kind === "folder" ? [createLoadingNode(node.projectId)] : [],
     type: resData.attributes.kind as TreeNodeType,
+    size: resData.attributes.size,
+    materialized_path: resData.attributes.materialized_path,
+    last_touched: resData.attributes.last_touched,
+    date_modified: resData.attributes.date_modified,
+    date_created: resData.attributes.date_created,
+    hash_md5: resData.attributes?.extra?.hashes?.md5,
+    hash_sha256: resData.attributes?.extra?.hashes?.sha256,
   }))
+}
+
+const nodeToLinkingFile = (node: TreeNode): LinkingFile => {
+  return {
+    projectId: node.projectId,
+    nodeId: node.nodeId,
+    label: node.label,
+    size: node.size ?? null,
+    materialized_path: node.materialized_path ?? null,
+    last_touched: node.last_touched ?? null,
+    date_modified: node.date_modified ?? null,
+    date_created: node.date_created ?? null,
+    hash_md5: node.hash_md5 ?? null,
+    hash_sha256: node.hash_sha256 ?? null,
+    type: node.type === "file" ? "file" : "folder",
+  }
+}
+
+const allTreeNode = (tree: FileTree): TreeNode[] => {
+  return tree.flatMap((node) => {
+    if (node.type === "file" || node.type === "loading" || node.type === "error") {
+      return [node]
+    }
+    return [node, ...allTreeNode(node.children)]
+  })
 }
 
 export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) {
@@ -117,15 +158,25 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
   const linkedProjects = useWatch<DmpFormValues>({
     name: "dmp.linkedGrdmProjects",
     defaultValue: [],
-  })
-  const linkedProjectIds = useMemo(
-    () => (linkedProjects as LinkedGrdmProject[]).map((p) => p.projectId) ?? [],
-    [linkedProjects],
-  )
+  }) as LinkedGrdmProject[]
+  const linkedProjectIds = linkedProjects.map((p) => p.projectId)
 
   const [tree, setTree] = useState<FileTree>([])
   const [expanded, setExpanded] = useState<string[]>([])
   const [loadingNodeIds, setLoadingNodeIds] = useState<Set<string>>(new Set())
+
+  // Dialog
+  const [openNodeId, setOpenNodeId] = useState<string | null>(null)
+  const handleDialogClose = () => setOpenNodeId(null)
+  const { control } = useFormContext<DmpFormValues>()
+  const { update } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
+    control,
+    name: "dmp.dataInfo",
+  })
+  const dataInfos = useWatch<DmpFormValues>({
+    name: "dmp.dataInfo",
+    defaultValue: [],
+  }) as DmpFormValues["dmp"]["dataInfo"]
 
   // Initialize tree with linked projects
   useEffect(() => {
@@ -177,46 +228,274 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       })
   }
 
-  const renderTree = (node: TreeNode): React.ReactNode => {
+  const fetchAllChildren = async (node: TreeNode): Promise<TreeNode | null> => {
+    if (node.type === "file" || node.type === "loading" || node.type === "error") return node
+    if (isAlreadyFetched(node)) {
+      await Promise.all(node.children.map(fetchAllChildren))
+      return node
+    }
+
+    setLoadingNodeIds((prev) => new Set(prev).add(node.nodeId))
+
+    try {
+      const fetchedNodes = await fetchFileNodes(token, node)
+      const updatedTree = updateNodeInTree(tree, node, { children: fetchedNodes })
+      const updatedNode = findNodeInTree(updatedTree, node.nodeId)
+      setTree(updatedTree)
+      return updatedNode ?? null
+    } catch {
+      const errorNode = createErrorNode(node.projectId)
+      const updatedTree = updateNodeInTree(tree, node, { children: [errorNode] })
+      setTree(updatedTree)
+      return null
+    } finally {
+      setLoadingNodeIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(node.nodeId)
+        return newSet
+      })
+    }
+  }
+
+  const renderTree = useCallback((node: TreeNode): React.ReactNode => {
     const isError = node.type === "error"
     const icon = prefixIcons[node.type]
+    const linkedDataInfoNum = dataInfos.filter((f) => f.linkingFiles.some((lf) => lf.nodeId === node.nodeId)).length
     return (
       <TreeItem
         key={node.nodeId}
         itemId={node.nodeId}
         label={
-          <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {icon}
-            <Typography color={isError ? "error.main" : "text.primary"} variant="body2">
-              {node.label}
-            </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              {icon}
+              <Typography color={isError ? "error.main" : "text.primary"} variant="body2">
+                {node.label}
+              </Typography>
+            </Box>
+            {node.type !== "project" && node.type !== "loading" && node.type !== "error" && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setOpenNodeId(node.nodeId)
+                  }}
+                  sx={{
+                    p: "4px",
+                    height: "24px",
+                    width: "8rem",
+                  }}
+                >
+                  <AddLinkOutlined fontSize="inherit" sx={{ mr: "0.5rem" }} />
+                  {"関連付ける"}
+                </Button>
+                <Chip
+                  label={`Linked: ${linkedDataInfoNum}`}
+                  size="small"
+                  sx={{ height: "20px", fontSize: "0.75rem" }}
+                />
+              </Box>
+            )}
           </Box>
         }
       >
         {node.children.map((child) => renderTree(child))}
       </TreeItem>
     )
+  }, [dataInfos, setOpenNodeId])
+
+  const renderDialogContent = () => {
+    if (openNodeId === null) return null
+    const node = findNodeInTree(tree, openNodeId)
+    if (!node) return null
+
+    const handleLinkFolderDataInfo = async (dataInfoIndex: number) => {
+      const updatedNode = await fetchAllChildren(node)
+      if (!updatedNode) return
+
+      const dataInfo = dataInfos[dataInfoIndex]
+      const existingNodeIds = dataInfo.linkingFiles.map((f) => f.nodeId)
+      const newFiles = allTreeNode([updatedNode])
+        .map(nodeToLinkingFile)
+        .filter((f) => !existingNodeIds.includes(f.nodeId))
+      dataInfo.linkingFiles.push(...newFiles)
+      update(dataInfoIndex, dataInfo)
+    }
+    const handleUnlinkFolderDataInfo = (dataInfoIndex: number) => {
+      const removeNodeIds = allTreeNode([node]).map((n) => n.nodeId)
+      const dataInfo = dataInfos[dataInfoIndex]
+      dataInfo.linkingFiles = dataInfo.linkingFiles.filter((f) => !removeNodeIds.includes(f.nodeId))
+      update(dataInfoIndex, dataInfo)
+    }
+
+    const handleLinkFileDataInfo = (dataInfoIndex: number) => {
+      const dataInfo = dataInfos[dataInfoIndex]
+      const existingNodeIds = dataInfo.linkingFiles.map((f) => f.nodeId)
+      const newFile = nodeToLinkingFile(node)
+      if (!existingNodeIds.includes(newFile.nodeId)) {
+        dataInfo.linkingFiles.push(newFile)
+        update(dataInfoIndex, dataInfo)
+      }
+    }
+    const handleUnlinkFileDataInfo = (dataInfoIndex: number) => {
+      const dataInfo = dataInfos[dataInfoIndex]
+      dataInfo.linkingFiles = dataInfo.linkingFiles.filter((f) => f.nodeId !== node.nodeId)
+      update(dataInfoIndex, dataInfo)
+    }
+
+    const renderFolderButtons = (dataInfoIndex: number) => {
+      const loading = loadingNodeIds.has(node.nodeId)
+      return (
+        <>
+          <Button
+            variant="outlined"
+            color="primary"
+            size="small"
+            onClick={() => handleLinkFolderDataInfo(dataInfoIndex)}
+            startIcon={<AddLinkOutlined />}
+            sx={{ width: "130px" }}
+            disabled={loading}
+          >
+            {loading ? "関連付け中" : "関連付ける"}
+          </Button>
+          <Button
+            variant="outlined"
+            color="warning"
+            size="small"
+            onClick={() => handleUnlinkFolderDataInfo(dataInfoIndex)}
+            startIcon={<LinkOffOutlined />}
+            sx={{ width: "130px" }}
+          >
+            {"関連付け解除"}
+          </Button>
+        </>
+      )
+    }
+
+    const renderFileButtons = (dataInfoIndex: number) => {
+      const found = dataInfos[dataInfoIndex].linkingFiles.some((f) => f.nodeId === node.nodeId)
+      return (
+        <Button
+          variant="outlined"
+          color={found ? "warning" : "primary"}
+          size="small"
+          onClick={() => {
+            if (found) {
+              handleUnlinkFileDataInfo(dataInfoIndex)
+            } else {
+              handleLinkFileDataInfo(dataInfoIndex)
+            }
+          }}
+          startIcon={found ? <LinkOffOutlined /> : <AddLinkOutlined />}
+          sx={{ width: "130px" }}
+        >
+          {found ? "関連付け解除" : "関連付ける"}
+        </Button>
+      )
+    }
+
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <Typography>
+          {`"${node.materialized_path}" を関連付ける DMP 研究データを選択してください。`}
+        </Typography>
+        {node.type === "folder" && (
+          <Typography>
+            {"フォルダ以下の全てのファイルの関連付けと関連付け解除が可能です。"}
+          </Typography>
+        )}
+
+        <TableContainer component={Paper} variant="outlined" sx={{
+          borderBottom: "none",
+          mt: "0.5rem",
+          width: "100%",
+        }}>
+          <Table>
+            <TableHead sx={{ backgroundColor: theme.palette.grey[100] }}>
+              <TableRow>
+                {["名称", "分野", "種別", ""].map((header, index) => (
+                  <TableCell
+                    key={index}
+                    children={header}
+                    sx={{ fontWeight: "bold", textAlign: "left", p: "0.5rem 1rem" }}
+                  />
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {dataInfos.map((dataInfo, index) => {
+                return (
+                  <TableRow key={index}>
+                    <TableCell children={dataInfo.dataName} sx={{ p: "0.5rem 1rem" }} />
+                    <TableCell children={dataInfo.researchField} sx={{ p: "0.5rem 1rem" }} />
+                    <TableCell children={dataInfo.dataType} sx={{ p: "0.5rem 1rem" }} />
+                    <TableCell sx={{ display: "flex", justifyContent: "end", p: "0.5rem 1rem", gap: "1rem" }}>
+                      {node.type === "folder" ? (
+                        renderFolderButtons(index)
+                      ) : (
+                        renderFileButtons(index)
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    )
   }
 
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
-      <SectionHeader text="他の GRDM Project との関連付け" />
+      <SectionHeader text="研究データと GRDM file の関連付け" />
       <Typography sx={{ mt: "0.5rem" }}>
-        {"上部で作成した研究データと GRDM 上の file との関連付けが行えます。"}
+        {"DMP 上で作成した研究データと GRDM Project 上の file との関連付けを行います。"}
       </Typography>
       <Card sx={{ p: "0.5rem", mt: "1rem" }} variant="outlined">
-        <SimpleTreeView
-          expandedItems={expanded}
-          onExpandedItemsChange={(e, nodeIds) => handleToggle(e, nodeIds)}
-          selectedItems={null}
-          onItemClick={() => {
-            //do nothing
-          }}
-          itemChildrenIndentation={24}
-        >
-          {tree.map((node) => renderTree(node))}
-        </SimpleTreeView>
+        {tree.length === 0 ? (
+          <Typography sx={{ mx: "1rem", my: "0.5rem" }}>
+            {"関連付けられた GRDM Project がありません。"}
+          </Typography>
+        ) : (
+          <SimpleTreeView
+            expandedItems={expanded}
+            onExpandedItemsChange={(e, nodeIds) => handleToggle(e, nodeIds)}
+            selectedItems={null}
+            onItemClick={() => {
+              //do nothing
+            }}
+            itemChildrenIndentation={24}
+          >
+            {tree.map((node) => renderTree(node))}
+          </SimpleTreeView>
+        )}
       </Card>
+
+      <Dialog
+        open={openNodeId !== null}
+        onClose={handleDialogClose}
+        fullWidth
+        maxWidth="md"
+        closeAfterTransition={false}
+      >
+        <DialogTitle sx={{ mt: "0.5rem", mx: "1rem" }}>
+          {"関連付ける DMP 研究データの選択"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
+          {renderDialogContent()}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleDialogClose}
+            sx={{ mt: "1rem" }}
+          >
+            {"閉じる"}
+          </Button>
+        </DialogContent>
+      </Dialog>
     </Box>
   )
 }

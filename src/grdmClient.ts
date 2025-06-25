@@ -664,6 +664,11 @@ export const readDmpFile = async (token: string, projectId: string): Promise<{
 
     // for 後方互換性
     const dmpObj = JSON.parse(content)
+    for (const dataInfo of dmpObj.dataInfo) {
+      if (dataInfo.linkingFiles === undefined) {
+        dataInfo.linkingFiles = []
+      }
+    }
     if (dmpObj.linkedGrdmProjectIds) {
       const ids = dmpObj.linkedGrdmProjectIds
       dmpObj.linkedGrdmProjects = ids.map((id: string) => ({

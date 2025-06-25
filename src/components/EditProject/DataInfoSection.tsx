@@ -381,7 +381,7 @@ export default function DataInfoSection({ sx }: DataInfoSectionProps) {
                 <TableCell
                   key={index}
                   children={header}
-                  sx={{ fontWeight: "bold", textAlign: "center", p: "0.5rem 1rem" }}
+                  sx={{ fontWeight: "bold", textAlign: "left", p: "0.5rem 1rem" }}
                 />
               ))}
             </TableRow>

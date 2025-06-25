@@ -49,9 +49,9 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
 
   return (
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
-      <SectionHeader text="他の GRDM Project との関連付け" />
+      <SectionHeader text="DMP と GRDM との関連付け" />
       <Typography sx={{ mt: "0.5rem" }}>
-        {"DMP Project と他の GRDM Project と関連付けることにより、研究データと GRDM 上の file との関連付けが行えます。"}
+        {"DMP Project と GRDM Project との関連付けを行います。"}
         <br />
         {"あなたの GRDM アカウント上の GRDM Project 一覧です。"}
       </Typography>

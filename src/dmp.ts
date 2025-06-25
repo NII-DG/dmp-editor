@@ -41,6 +41,33 @@ export const personInfoSchema = z.object({
 })
 export type PersonInfo = z.infer<typeof personInfoSchema>
 
+export interface LinkingFile {
+  projectId: string
+  nodeId: string
+  label: string
+  size?: number | null
+  materialized_path?: string | null
+  last_touched?: string | null
+  date_modified?: string | null
+  date_created?: string | null
+  hash_md5?: string | null
+  hash_sha256?: string | null
+  type: "file" | "folder"
+}
+export const fileNodeSchema: z.ZodType<LinkingFile> = z.object({
+  projectId: z.string(),
+  nodeId: z.string(),
+  label: z.string(),
+  size: z.number().nullable().optional(),
+  materialized_path: z.string().nullable().optional(),
+  last_touched: z.string().nullable().optional(),
+  date_modified: z.string().nullable().optional(),
+  date_created: z.string().nullable().optional(),
+  hash_md5: z.string().nullable().optional(),
+  hash_sha256: z.string().nullable().optional(),
+  type: z.enum(["file", "folder"]),
+})
+
 // 研究データ情報
 export const researchField = ["ライフサイエンス", "情報通信", "環境", "ナノテク・材料", "エネルギー", "ものづくり技術", "社会基盤", "フロンティア", "人文・社会", "自然科学一般", "その他"] as const
 export const dataType = ["データセット", "集計データ", "臨床試験データ", "編集データ", "符号化データ", "実験データ", "ゲノムデータ", "地理空間データ", "実験ノート", "測定・評価データ", "観測データ", "記録データ", "シミュレーションデータ", "調査データ"] as const
@@ -71,6 +98,9 @@ export const dataInfoSchema = z.object({
   dataManagerContact: z.string(), // データ管理者の連絡先
   dataStorageLocation: z.string().nullable().optional(), // 研究データの保存場所 (研究事業終了後)
   dataStoragePeriod: z.string().nullable().optional(), // 研究データの保存期間 (研究事業終了後)
+
+  // for linking with GRDM
+  linkingFiles: z.array(fileNodeSchema),
 })
 export type DataInfo = z.infer<typeof dataInfoSchema>
 
@@ -168,6 +198,7 @@ export const initDataInfo = (): DataInfo => {
     dataManagerContact: "",
     dataStorageLocation: undefined,
     dataStoragePeriod: undefined,
+    linkingFiles: [],
   }
 }
 
