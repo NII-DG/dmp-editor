@@ -25,6 +25,8 @@ export interface FormCardProps {
   projects: ProjectInfo[]
 }
 
+type SaveState = "idle" | "saving" | "saved" | "error"
+
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
@@ -33,18 +35,24 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const snackbarOpen = alertMessage !== null
   const updateMutation = useUpdateDmp()
-  const [isMutating, setIsMutating] = useState(false)
+  // const [isMutating, setIsMutating] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>("idle")
 
   const onSubmit = async () => {
     const formValues = getValues()
+    setSaveState("saving")
 
     updateMutation.mutate(
       { projectId, isNew, formValues },
       {
         onSuccess: (newProjectId: string) => {
+          setSaveState("saved")
+          setTimeout(() => setSaveState("idle"), 2000)
           if (isNew) navigate(`/projects/${newProjectId}`)
         },
         onError: (error: unknown) => {
+          setSaveState("error")
+          setTimeout(() => setSaveState("idle"), 2000)
           const messages = getErrorChain(error).map((e) => e.message)
           if (messages.some((msg) => msg.includes("HTTP Error: 403"))) {
             setAlertMessage(
@@ -54,11 +62,19 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
             setAlertMessage(`DMP の更新に失敗しました: ${messages.join(", ")}`)
           }
         },
-        onSettled: () => {
-          setIsMutating(false)
-        },
       },
     )
+  }
+
+  const buttonLabel = () => {
+    if (saveState === "saving") return "保存中"
+    if (saveState === "saved") return "保存しました"
+    if (saveState === "error") return "保存に失敗"
+    return "GRDM に保存する"
+  }
+  const isButtonDisabled = () => {
+    if (saveState === "saving" || saveState === "saved" || saveState === "error") return true
+    return isSubmitted && !isValid
   }
 
   return (
@@ -93,8 +109,8 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
               textTransform: "none",
               width: "180px",
             }}
-            children={isMutating ? "保存中" : "GRDM に保存する"}
-            disabled={isMutating || (isSubmitted && !isValid)}
+            children={buttonLabel()}
+            disabled={isButtonDisabled()}
             startIcon={<SaveOutlined />}
           />
         </Box>

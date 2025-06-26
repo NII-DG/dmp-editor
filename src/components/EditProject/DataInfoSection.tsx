@@ -389,11 +389,11 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
   }
 
   // Linking Files
-  const [linkedGrdmFilesIndex, setLinkingFilesIndex] = useState<number | null>(null)
-  const handleUnlinkLinkingFile = (dataInfoIndex: number, nodeId: string) => {
+  const [linkedGrdmFilesIndex, setLinkedFilesIndex] = useState<number | null>(null)
+  const handleUnlinkLinkedFile = (dataInfoIndex: number, nodeId: string) => {
     const dataInfo = dataInfos[dataInfoIndex]
-    const newLinkingFiles = dataInfo.linkedGrdmFiles.filter((file) => file.nodeId !== nodeId)
-    const updatedDateInfo = { ...dataInfo, linkedGrdmFiles: newLinkingFiles }
+    const newLinkedFiles = dataInfo.linkedGrdmFiles.filter((file) => file.nodeId !== nodeId)
+    const updatedDateInfo = { ...dataInfo, linkedGrdmFiles: newLinkedFiles }
     update(dataInfoIndex, updatedDateInfo)
   }
 
@@ -406,7 +406,7 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
     }
   }
 
-  const renderLinkingFilesContent = () => {
+  const renderLinkedFilesContent = () => {
     if (linkedGrdmFilesIndex === null) return null
 
     const dataInfo = dataInfos[linkedGrdmFilesIndex]
@@ -481,7 +481,7 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
                         variant="outlined"
                         color={"warning"}
                         size="small"
-                        onClick={() => handleUnlinkLinkingFile(linkedGrdmFilesIndex, file.nodeId)}
+                        onClick={() => handleUnlinkLinkedFile(linkedGrdmFilesIndex, file.nodeId)}
                         startIcon={<LinkOffOutlined />}
                         sx={{ width: "130px" }}
                       >
@@ -531,7 +531,7 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
                     color="primary"
                     children={"関連ファイル"}
                     startIcon={<AddLinkOutlined />}
-                    onClick={() => setLinkingFilesIndex(index)}
+                    onClick={() => setLinkedFilesIndex(index)}
                     sx={{ textTransform: "none" }}
                   />
                 </TableCell>
@@ -585,7 +585,7 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
 
       <Dialog
         open={linkedGrdmFilesIndex !== null}
-        onClose={() => setLinkingFilesIndex(null)}
+        onClose={() => setLinkedFilesIndex(null)}
         fullWidth
         maxWidth="lg"
         closeAfterTransition={false}
@@ -594,13 +594,13 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
           {"関連付けられた GRDM ファイル"}
         </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
-          {renderLinkingFilesContent()}
+          {renderLinkedFilesContent()}
         </DialogContent>
         <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
           <Button
             variant="outlined"
             color="secondary"
-            onClick={() => setLinkingFilesIndex(null)}
+            onClick={() => setLinkedFilesIndex(null)}
             children="閉じる"
           />
         </DialogActions>

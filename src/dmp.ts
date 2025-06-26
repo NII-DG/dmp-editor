@@ -41,7 +41,7 @@ export const personInfoSchema = z.object({
 })
 export type PersonInfo = z.infer<typeof personInfoSchema>
 
-export interface LinkingFile {
+export interface LinkedGrdmFile {
   projectId: string
   nodeId: string
   label: string
@@ -52,10 +52,10 @@ export interface LinkingFile {
   date_created?: string | null
   hash_md5?: string | null
   hash_sha256?: string | null
-  type: "file" | "folder"
-  link?: string | null // URL to the GRDM page (only for file nodes)
+  type: "file"
+  link?: string | null // URL to the GRDM page
 }
-export const fileNodeSchema: z.ZodType<LinkingFile> = z.object({
+export const fileNodeSchema: z.ZodType<LinkedGrdmFile> = z.object({
   projectId: z.string(),
   nodeId: z.string(),
   label: z.string(),

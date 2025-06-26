@@ -7,7 +7,7 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
 import { useRecoilValue } from "recoil"
 
 import SectionHeader from "@/components/EditProject/SectionHeader"
-import { DmpFormValues, LinkingFile, LinkedGrdmProject } from "@/dmp"
+import { DmpFormValues, LinkedGrdmFile, LinkedGrdmProject } from "@/dmp"
 import { listingFileNodes, ProjectInfo } from "@/grdmClient"
 import { tokenAtom } from "@/store/token"
 import { theme } from "@/theme"
@@ -152,7 +152,7 @@ const fetchFileNodes = async (
   }))
 }
 
-const nodeToLinkingFile = (node: TreeNode): LinkingFile => {
+const nodeToLinkedFile = (node: TreeNode): LinkedGrdmFile => {
   return {
     projectId: node.projectId,
     nodeId: node.nodeId,
@@ -164,7 +164,7 @@ const nodeToLinkingFile = (node: TreeNode): LinkingFile => {
     date_created: node.date_created ?? null,
     hash_md5: node.hash_md5 ?? null,
     hash_sha256: node.hash_sha256 ?? null,
-    type: node.type === "file" ? "file" : "folder",
+    type: "file", // TODO: Handle folder case if needed
   }
 }
 
@@ -425,7 +425,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       const existingNodeIds = dataInfo.linkedGrdmFiles.map((f) => f.nodeId)
       const newFiles = allTreeNode([updatedNode])
         .filter((n) => n.type === "file")
-        .map(nodeToLinkingFile)
+        .map(nodeToLinkedFile)
         .filter((f) => !existingNodeIds.includes(f.nodeId))
       dataInfo.linkedGrdmFiles.push(...newFiles)
       update(dataInfoIndex, dataInfo)
@@ -441,7 +441,7 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       if (node.type !== "file") return
       const dataInfo = dataInfos[dataInfoIndex]
       const existingNodeIds = dataInfo.linkedGrdmFiles.map((f) => f.nodeId)
-      const newFile = nodeToLinkingFile(node)
+      const newFile = nodeToLinkedFile(node)
       if (!existingNodeIds.includes(newFile.nodeId)) {
         dataInfo.linkedGrdmFiles.push(newFile)
         update(dataInfoIndex, dataInfo)
