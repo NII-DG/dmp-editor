@@ -25,11 +25,11 @@ import { authenticateGrdm } from "@/grdmClient"
 import { tokenAtom } from "@/store/token"
 
 export interface LoginCardProps {
-  sx?: SxProps;
+  sx?: SxProps
 }
 
 interface FormValues {
-  token: string;
+  token: string
 }
 
 export default function LoginCard({ sx }: LoginCardProps) {
@@ -40,30 +40,30 @@ export default function LoginCard({ sx }: LoginCardProps) {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     defaultValues: { token: "" },
-  });
-  const [showToken, setShowToken] = useState(false);
-  const setToken = useSetRecoilState(tokenAtom);
+  })
+  const [showToken, setShowToken] = useState(false)
+  const setToken = useSetRecoilState(tokenAtom)
 
   const onSubmit = async (data: FormValues) => {
-    const { token } = data;
+    const { token } = data
     try {
-      const result = await authenticateGrdm(token);
+      const result = await authenticateGrdm(token)
       if (result) {
-        setToken(token);
+        setToken(token)
       } else {
         setError("token", {
           type: "manual",
           message: "認証に失敗しました。Token を確認してください。",
-        });
+        })
       }
     } catch (e) {
-      console.error("Failed to authenticate with GRDM", e);
+      console.error("Failed to authenticate with GRDM", e)
       setError("token", {
         type: "manual",
         message: "認証中にエラーが発生しました。",
-      });
+      })
     }
-  };
+  }
 
   return (
     <OurCard sx={sx}>
@@ -180,5 +180,5 @@ export default function LoginCard({ sx }: LoginCardProps) {
         />
       </Box>
     </OurCard>
-  );
+  )
 }
