@@ -1,5 +1,5 @@
 // Get the development environment flag from the environment variable
-const USE_GRDM_DEV_ENV = import.meta.env.VITE_USE_GRDM_DEV_ENV === "true";
+const USE_GRDM_DEV_ENV = import.meta.env.VITE_USE_GRDM_DEV_ENV === "true"
 
 /**
  * GakuNin RDM environment settings
