@@ -1,22 +1,35 @@
-import { LockOutlined, Visibility, VisibilityOff } from "@mui/icons-material"
-import { Box, Button, Divider, FormControl, FormHelperText, IconButton, InputAdornment, InputLabel, Link, OutlinedInput, Typography } from "@mui/material"
-import { SxProps } from "@mui/system"
-import { useState } from "react"
-import { useForm, Controller } from "react-hook-form"
-import { useSetRecoilState } from "recoil"
+import { LockOutlined, Visibility, VisibilityOff } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Divider,
+  FormControl,
+  FormHelperText,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  Link,
+  OutlinedInput,
+  Typography,
+} from "@mui/material";
+import { SxProps } from "@mui/system";
+import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { useSetRecoilState } from "recoil";
 
-import tokenEg1Url from "@/assets/token-eg-1.png"
-import tokenEg2Url from "@/assets/token-eg-2.png"
-import OurCard from "@/components/OurCard"
-import { authenticateGrdm } from "@/grdmClient"
-import { tokenAtom } from "@/store/token"
+import tokenEg1Url from "@/assets/token-eg-1.png";
+import tokenEg2Url from "@/assets/token-eg-2.png";
+import OurCard from "@/components/OurCard";
+import { GRDM_CONFIG } from "@/config";
+import { authenticateGrdm } from "@/grdmClient";
+import { tokenAtom } from "@/store/token";
 
 export interface LoginCardProps {
-  sx?: SxProps
+  sx?: SxProps;
 }
 
 interface FormValues {
-  token: string
+  token: string;
 }
 
 export default function LoginCard({ sx }: LoginCardProps) {
@@ -27,24 +40,30 @@ export default function LoginCard({ sx }: LoginCardProps) {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     defaultValues: { token: "" },
-  })
-  const [showToken, setShowToken] = useState(false)
-  const setToken = useSetRecoilState(tokenAtom)
+  });
+  const [showToken, setShowToken] = useState(false);
+  const setToken = useSetRecoilState(tokenAtom);
 
   const onSubmit = async (data: FormValues) => {
-    const { token } = data
+    const { token } = data;
     try {
-      const result = await authenticateGrdm(token)
+      const result = await authenticateGrdm(token);
       if (result) {
-        setToken(token)
+        setToken(token);
       } else {
-        setError("token", { type: "manual", message: "認証に失敗しました。Token を確認してください。" })
+        setError("token", {
+          type: "manual",
+          message: "認証に失敗しました。Token を確認してください。",
+        });
       }
     } catch (e) {
-      console.error("Failed to authenticate with GRDM", e)
-      setError("token", { type: "manual", message: "認証中にエラーが発生しました。" })
+      console.error("Failed to authenticate with GRDM", e);
+      setError("token", {
+        type: "manual",
+        message: "認証中にエラーが発生しました。",
+      });
     }
-  }
+  };
 
   return (
     <OurCard sx={sx}>
@@ -54,17 +73,25 @@ export default function LoginCard({ sx }: LoginCardProps) {
       <Typography sx={{ mt: "0.5rem" }}>
         {"GakuNin RDM の Token を取得し、入力してください。"}
         <br />
-        {"この Token は、GakuNin RDM との疎通に用いられ、この Browser の Local Storage のみに保存されます。"}
+        {
+          "この Token は、GakuNin RDM との疎通に用いられ、この Browser の Local Storage のみに保存されます。"
+        }
       </Typography>
       <Box
         component="form"
         onSubmit={handleSubmit(onSubmit)}
-        sx={{ display: "flex", flexDirection: "row", gap: "1.5rem", mt: "1.5rem" }}
+        sx={{
+          display: "flex",
+          flexDirection: "row",
+          gap: "1.5rem",
+          mt: "1.5rem",
+        }}
       >
-        <FormControl sx={{ flexGrow: 1, maxWidth: "400px" }} error={!!errors.token}>
-          <InputLabel>
-            {"GRDM Token"}
-          </InputLabel>
+        <FormControl
+          sx={{ flexGrow: 1, maxWidth: "400px" }}
+          error={!!errors.token}
+        >
+          <InputLabel>{"GRDM Token"}</InputLabel>
           <Controller
             name="token"
             control={control}
@@ -76,7 +103,10 @@ export default function LoginCard({ sx }: LoginCardProps) {
                 label="GRDM Token"
                 endAdornment={
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowToken((prev) => !prev)} edge="end">
+                    <IconButton
+                      onClick={() => setShowToken((prev) => !prev)}
+                      edge="end"
+                    >
                       {showToken ? <Visibility /> : <VisibilityOff />}
                     </IconButton>
                   </InputAdornment>
@@ -103,14 +133,18 @@ export default function LoginCard({ sx }: LoginCardProps) {
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <Typography>
           {"Token は、"}
-          <Link href="https://rdm.nii.ac.jp/settings/tokens" target="_blank" rel="noopener noreferrer">
-            {"https://rdm.nii.ac.jp/settings/tokens"}
+          <Link
+            href={GRDM_CONFIG.TOKEN_SETTINGS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {GRDM_CONFIG.TOKEN_SETTINGS_URL}
           </Link>
           {" から取得できます。"}
           <br />
           {"また、"}
           <Link
-            href="https://support.rdm.nii.ac.jp/usermanual/Setting-06/"
+            href={GRDM_CONFIG.SUPPORT_URL}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -146,5 +180,5 @@ export default function LoginCard({ sx }: LoginCardProps) {
         />
       </Box>
     </OurCard>
-  )
+  );
 }
