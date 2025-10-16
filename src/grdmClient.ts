@@ -1,10 +1,11 @@
 import { z } from "zod"
 
+import { GRDM_CONFIG } from "@/config"
 import { Dmp, dmpSchema } from "@/dmp"
 
 export const DMP_FILE_NAME = "dmp-project.json"
 export const DMP_PROJECT_PREFIX = "dmp-project-"
-const GRDM_API_BASE_URL = "https://api.rdm.nii.ac.jp/v2"
+const GRDM_API_BASE_URL = GRDM_CONFIG.API_BASE_URL
 
 const fetchWithRetry = async (
   url: string,
