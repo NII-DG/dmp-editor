@@ -1,4 +1,4 @@
-import { LockOutlined, Visibility, VisibilityOff } from "@mui/icons-material";
+import { LockOutlined, Visibility, VisibilityOff } from "@mui/icons-material"
 import {
   Box,
   Button,
@@ -11,18 +11,18 @@ import {
   Link,
   OutlinedInput,
   Typography,
-} from "@mui/material";
-import { SxProps } from "@mui/system";
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { useSetRecoilState } from "recoil";
+} from "@mui/material"
+import { SxProps } from "@mui/system"
+import { useState } from "react"
+import { useForm, Controller } from "react-hook-form"
+import { useSetRecoilState } from "recoil"
 
-import tokenEg1Url from "@/assets/token-eg-1.png";
-import tokenEg2Url from "@/assets/token-eg-2.png";
-import OurCard from "@/components/OurCard";
-import { GRDM_CONFIG } from "@/config";
-import { authenticateGrdm } from "@/grdmClient";
-import { tokenAtom } from "@/store/token";
+import tokenEg1Url from "@/assets/token-eg-1.png"
+import tokenEg2Url from "@/assets/token-eg-2.png"
+import OurCard from "@/components/OurCard"
+import { GRDM_CONFIG } from "@/config"
+import { authenticateGrdm } from "@/grdmClient"
+import { tokenAtom } from "@/store/token"
 
 export interface LoginCardProps {
   sx?: SxProps;
