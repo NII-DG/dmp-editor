@@ -213,8 +213,82 @@ export const getNodesResponseSchema = z.object({
   }),
 })
 
-export const getNodes = async (token: string, followPagination = false): Promise<GetNodesResponse> => {
-  const url = `${GRDM_API_BASE_URL}/nodes/`
+/**
+ * Filter options for GRDM API projects/components node queries
+ */
+export interface ProjectOrComponentNodeFilterOptions {
+  /** Filter by node ID */
+  id?: string
+
+  /** Filter by category */
+  category?:
+    | "analysis"
+    | "communication"
+    | "data"
+    | "hypothesis"
+    | "instrumentation"
+    | "methods and measures"
+    | "procedure"
+    | "project"
+    | "software"
+    | "other"
+
+  /** Filter by title */
+  title?: string
+
+  /** Filter by description */
+  description?: string
+
+  /** Filter by public visibility status */
+  public?: boolean
+
+  /** Filter by tags (comma-separated string or array) */
+  tags?: string | string[]
+
+  /** Filter by creation date (ISO 8601 format) */
+  date_created?: string
+
+  /** Filter by modification date (ISO 8601 format) */
+  date_modified?: string
+
+  /** Filter by parent node ID */
+  parent?: string
+
+  /** Filter by root node ID */
+  root?: string
+}
+
+/**
+ * Convert FilterOptions to URL query string
+ * Modern approach using URLSearchParams
+ */
+const toFilterString = (
+  filterOptions?: ProjectOrComponentNodeFilterOptions,
+): string => {
+  if (!filterOptions) return ""
+
+  const params = new URLSearchParams()
+
+  Object.entries(filterOptions).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      // Handle tags array
+      const stringValue = Array.isArray(value)
+        ? value.join(",")
+        : String(value)
+      params.append(`filter[${key}]`, stringValue)
+    }
+  })
+
+  const queryString = params.toString()
+  return queryString ? `?${queryString}` : ""
+}
+
+export const getNodes = async (
+  token: string,
+  followPagination = false,
+  filterOptions?: ProjectOrComponentNodeFilterOptions,
+): Promise<GetNodesResponse> => {
+  const url = `${GRDM_API_BASE_URL}/nodes/${toFilterString(filterOptions)}`
   let allData: GetNodesResponse["data"] = []
   let nextUrl: string | null = url
 
@@ -278,10 +352,17 @@ const nodeToProjectInfo = (node: NodeData): ProjectInfo => ({
   self: node.links.self,
 })
 
-export const listingProjects = async (token: string): Promise<ProjectInfo[]> => {
-  const response = await getNodes(token, true)
+export const listingProjects = async (
+  token: string,
+  titleFilter?: string,
+): Promise<ProjectInfo[]> => {
+  const filterOptions: ProjectOrComponentNodeFilterOptions = {
+    category: "project",
+    title: titleFilter,
+  }
+  const response = await getNodes(token, true, filterOptions)
   return response.data
-    .map((node) => (nodeToProjectInfo(node)))
+    .map((node) => nodeToProjectInfo(node))
     .filter((project) => project.category === "project")
 }
 

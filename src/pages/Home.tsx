@@ -5,7 +5,7 @@ import LoginCard from "@/components/Home/LoginCard"
 import ProjectTable from "@/components/Home/ProjectTable"
 import Loading from "@/components/Loading"
 import { useAuth } from "@/hooks/useAuth"
-import { useProjects } from "@/hooks/useProjects"
+import { useDmpProjects } from "@/hooks/useDmpProjects"
 import { useUser } from "@/hooks/useUser"
 import { tokenAtom } from "@/store/token"
 
@@ -13,7 +13,7 @@ export default function Home() {
   const token = useRecoilValue(tokenAtom)
   const auth = useAuth(token)
   const userQuery = useUser()
-  const projectsQuery = useProjects()
+  const projectsQuery = useDmpProjects()
 
   const loading = auth.isLoading || userQuery.isLoading || projectsQuery.isLoading
   const error = auth.error || userQuery.error || projectsQuery.error
