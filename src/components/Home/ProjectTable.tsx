@@ -1,4 +1,5 @@
-import { EditOutlined, OpenInNew } from "@mui/icons-material"
+import EditOutlined from "@mui/icons-material/EditOutlined"
+import OpenInNew from "@mui/icons-material/OpenInNew"
 import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useNavigate } from "react-router"

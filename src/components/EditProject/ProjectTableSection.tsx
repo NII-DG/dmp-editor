@@ -1,4 +1,6 @@
-import { AddLinkOutlined, LinkOffOutlined, OpenInNew } from "@mui/icons-material"
+import AddLinkOutlined from "@mui/icons-material/AddLinkOutlined"
+import LinkOffOutlined from "@mui/icons-material/LinkOffOutlined"
+import OpenInNew from "@mui/icons-material/OpenInNew"
 import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
