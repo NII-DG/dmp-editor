@@ -1,11 +1,9 @@
-import {
-  AccountCircleOutlined,
-  ArrowDropDownOutlined,
-  LogoutOutlined,
-  FileCopyOutlined,
-  Check,
-  OpenInNew,
-} from "@mui/icons-material"
+import AccountCircleOutlined from "@mui/icons-material/AccountBalanceOutlined"
+import ArrowDropDownOutlined from "@mui/icons-material/ArrowDropDownOutlined"
+import Check from "@mui/icons-material/Check"
+import FileCopyOutlined from "@mui/icons-material/FileCopyOutlined"
+import LogoutOutlined from "@mui/icons-material/LogoutOutlined"
+import OpenInNew from "@mui/icons-material/OpenInNew"
 import { AppBar, Box, Link, Button, Menu, MenuItem, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"

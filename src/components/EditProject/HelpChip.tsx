@@ -1,4 +1,4 @@
-import { HelpOutlineOutlined } from "@mui/icons-material"
+import HelpOutlineOutlined from "@mui/icons-material/HelpOutlineOutlined"
 import { IconButton, Popover, Box, Typography } from "@mui/material"
 import { SxProps } from "@mui/system"
 import React, { useState } from "react"

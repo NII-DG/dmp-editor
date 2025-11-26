@@ -1,4 +1,4 @@
-import { SaveOutlined } from "@mui/icons-material"
+import SaveOutlined from "@mui/icons-material/SaveOutlined"
 import { Box, Typography, Button, Divider, Alert, Snackbar } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"

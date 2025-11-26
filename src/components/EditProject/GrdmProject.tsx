@@ -1,4 +1,4 @@
-import { OpenInNew } from "@mui/icons-material"
+import OpenInNew from "@mui/icons-material/OpenInNew"
 import { Box, FormControl, OutlinedInput, FormHelperText, Typography, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useFormContext, Controller } from "react-hook-form"

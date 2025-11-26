@@ -1,4 +1,4 @@
-import { DownloadingOutlined } from "@mui/icons-material"
+import DownloadingOutlined from "@mui/icons-material/DownloadingOutlined"
 import { Typography, Button, CircularProgress } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
