@@ -7,11 +7,14 @@ import { User } from "@/hooks/useUser"
 
 // DMP 作成・更新情報
 export const revisionType = ["新規", "修正", "更新"] as const
+export const researchPhases = ["計画時", "研究中", "報告時"] as const
+export type ResearchPhase = typeof researchPhases[number]
 export const dmpMetadataSchema = z.object({
   revisionType: z.enum(revisionType), // 種別
   submissionDate: z.string(), // 提出日 YYYY-MM-DD
   dateCreated: z.string(), // DMP作成年月日 YYYY-MM-DD
   dateModified: z.string(), // DMP最終更新年月日 YYYY-MM-DD
+  researchPhase: z.enum(researchPhases).default("計画時"), // 研究フェーズ
 })
 export type DmpMetadata = z.infer<typeof dmpMetadataSchema>
 
@@ -77,7 +80,7 @@ export const hasSensitiveData = ["有", "無"] as const
 export const accessRights = ["公開", "共有", "非共有・非公開", "公開期間猶予"] as const
 export const dataInfoSchema = z.object({
   dataName: z.string(), // 管理対象データの名称
-  publicationDate: z.string(), // 掲載日・掲載更新日
+  publicationDate: z.string().nullable().optional(), // 掲載日・掲載更新日
   description: z.string(), // データの説明
   acquisitionMethod: z.string().nullable().optional(), // 管理対象データの取得または収集方法
   researchField: z.enum(researchField), // データの分野
@@ -91,8 +94,8 @@ export const dataInfoSchema = z.object({
   backupLocation: z.string().nullable().optional(), // 管理対象データのバックアップ場所 (研究活動時)
   publicationPolicy: z.string().nullable().optional(), // 管理対象データの公開・提供方針詳細
   accessRights: z.enum(accessRights), // アクセス権
-  plannedPublicationDate: z.string(), // 管理対象データの公開予定日 YYYY-MM-DD
-  repository: z.string(), // リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)
+  plannedPublicationDate: z.string().nullable().optional(), // 管理対象データの公開予定日 YYYY-MM-DD
+  repository: z.string().nullable().optional(), // リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)
   dataCreator: z.number().nullable().optional(), // 管理対象データの作成者
   dataManagementAgency: z.string(), // データ管理機関
   rorId: z.string().nullable().optional(), // データ管理機関コード (ROR ID)
@@ -144,6 +147,7 @@ export const initDmp = (user: User | null | undefined = null): Dmp => {
       submissionDate: todayString(),
       dateCreated: todayString(),
       dateModified: todayString(),
+      researchPhase: "計画時",
     },
     projectInfo: {
       fundingAgency: "",
@@ -177,7 +181,7 @@ export const initPersonInfo = (): PersonInfo => {
 export const initDataInfo = (): DataInfo => {
   return {
     dataName: "",
-    publicationDate: "",
+    publicationDate: undefined,
     description: "",
     acquisitionMethod: undefined,
     researchField: "ライフサイエンス",
@@ -191,8 +195,8 @@ export const initDataInfo = (): DataInfo => {
     backupLocation: undefined,
     publicationPolicy: undefined,
     accessRights: "公開",
-    plannedPublicationDate: "",
-    repository: "",
+    plannedPublicationDate: undefined,
+    repository: undefined,
     dataCreator: undefined,
     dataManagementAgency: "",
     rorId: undefined,
@@ -291,7 +295,7 @@ export const exportToExcel = (dmp: Dmp): Blob => {
   const dataInfoData = dmp.dataInfo.map((data, index) => [
     index + 1,
     data.dataName,
-    data.publicationDate,
+    data.publicationDate ?? "",
     data.description,
     data.acquisitionMethod ?? "",
     data.researchField,
@@ -305,8 +309,8 @@ export const exportToExcel = (dmp: Dmp): Blob => {
     data.backupLocation ?? "",
     data.publicationPolicy ?? "",
     data.accessRights,
-    data.plannedPublicationDate,
-    data.repository,
+    data.plannedPublicationDate ?? "",
+    data.repository ?? "",
     data.dataCreator ?? "",
     data.dataManagementAgency,
     data.rorId ?? "",

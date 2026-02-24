@@ -15,7 +15,7 @@ import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { accessRights, dataType, hasSensitiveData, initDataInfo, researchField } from "@/dmp"
-import type { DataInfo, DmpFormValues } from "@/dmp"
+import type { DataInfo, DmpFormValues, ResearchPhase } from "@/dmp"
 import { formatDateToTimezone, ProjectInfo } from "@/grdmClient"
 import type { RorOrganization } from "@/hooks/useRorSearch"
 import { useRorSearch } from "@/hooks/useRorSearch"
@@ -49,7 +49,7 @@ const formData: FormData[] = [
   {
     key: "publicationDate",
     label: "掲載日・掲載更新日",
-    required: true,
+    required: false, // dynamic: required in 研究中 / 報告時
     type: "date",
   },
   {
@@ -205,7 +205,7 @@ const formData: FormData[] = [
   {
     key: "repository",
     label: "リポジトリ情報 (リポジトリ URL・DOI リンク) (研究活動後)",
-    required: true,
+    required: false, // dynamic: required only in 報告時
     type: "text",
     placeholder: "e.g., ○○大学機関リポジトリ, https://doi.org/10.12345/abcde",
     helpChip: (<>
@@ -399,6 +399,20 @@ interface DataInfoSectionProps {
 
 export default function DataInfoSection({ sx, user, projects }: DataInfoSectionProps) {
   const { control } = useFormContext<DmpFormValues>()
+  const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
+
+  const getEffectiveRequired = (key: keyof DataInfo, staticRequired: boolean): boolean => {
+    switch (key) {
+      case "publicationDate":
+        return researchPhase === "研究中" || researchPhase === "報告時"
+      case "repository":
+      case "plannedPublicationDate":
+        return researchPhase === "報告時"
+      default:
+        return staticRequired
+    }
+  }
+
   const { append, remove, move, update } = useFieldArray<DmpFormValues, "dmp.dataInfo">({
     control,
     name: "dmp.dataInfo",
@@ -474,8 +488,9 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
     dialogMethods.setValue(key, newValue as never)
   }
 
-  const getValidationRules = <K extends keyof DataInfo>(key: K, required: boolean, label: string) => {
-    if (required) {
+  const getValidationRules = <K extends keyof DataInfo>(key: K, staticRequired: boolean, label: string) => {
+    const effectiveRequired = getEffectiveRequired(key, staticRequired)
+    if (effectiveRequired) {
       return { required: `${label} は必須です` }
     }
     if (key === "plannedPublicationDate") {
@@ -754,14 +769,15 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
             sx={{ mt: "0.5rem", mx: "1rem" }}
           />
           <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
-            {openIndex !== null && formData.map(({ key, label, required, helperText, placeholder, type, selectMultiple, helpChip, minRows }) => {
+            {openIndex !== null && formData.map(({ key, label, required: staticRequired, helperText, placeholder, type, selectMultiple, helpChip, minRows }) => {
+              const effectiveRequired = getEffectiveRequired(key, staticRequired)
               // Render the data management agency field with ROR API autocomplete
               if (key === "dataManagementAgency") {
                 return (
                   <DataManagementAgencyField
                     key={key}
                     label={label}
-                    required={required}
+                    required={effectiveRequired}
                     helpChip={helpChip}
                   />
                 )
@@ -771,11 +787,11 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
                   key={key}
                   name={key}
                   control={dialogMethods.control}
-                  rules={getValidationRules(key, required, label)}
+                  rules={getValidationRules(key, staticRequired, label)}
                   render={({ field, fieldState: { error } }) => (
                     <FormControl fullWidth>
                       <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-                        <OurFormLabel label={label} required={required} />
+                        <OurFormLabel label={label} required={effectiveRequired} />
                         {helpChip && <HelpChip text={helpChip} />}
                       </Box>
                       {!selectMultiple ? (

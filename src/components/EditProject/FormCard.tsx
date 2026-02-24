@@ -1,8 +1,8 @@
 import SaveOutlined from "@mui/icons-material/SaveOutlined"
-import { Box, Typography, Button, Divider, Alert, Snackbar } from "@mui/material"
+import { Box, Typography, Button, Divider, Alert, Snackbar, ToggleButton, ToggleButtonGroup } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
-import { useFormContext } from "react-hook-form"
+import { useFormContext, useWatch } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
 
 import DataInfoSection from "@/components/EditProject/DataInfoSection"
@@ -11,7 +11,8 @@ import GrdmProject from "@/components/EditProject/GrdmProject"
 import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
 import OurCard from "@/components/OurCard"
-import { DmpFormValues } from "@/dmp"
+import { DmpFormValues, researchPhases } from "@/dmp"
+import type { ResearchPhase } from "@/dmp"
 import { ProjectInfo } from "@/grdmClient"
 import { useUpdateDmp } from "@/hooks/useUpdateDmp"
 import { User } from "@/hooks/useUser"
@@ -30,7 +31,8 @@ type SaveState = "idle" | "saving" | "saved" | "error"
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { getValues, handleSubmit, formState } = useFormContext<DmpFormValues>()
+  const { getValues, handleSubmit, formState, control, setValue } = useFormContext<DmpFormValues>()
+  const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
   const { isValid, isSubmitted } = formState
   const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const snackbarOpen = alertMessage !== null
@@ -88,6 +90,23 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
           component="h1"
           children={isNew ? "DMP Project の新規作成" : "DMP Project の編集"}
         />
+        <Box sx={{ mt: "1rem", display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem" }}>
+          <Typography sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>{"研究フェーズ:"}</Typography>
+          <ToggleButtonGroup
+            value={researchPhase}
+            exclusive
+            size="small"
+            onChange={(_, value: ResearchPhase | null) => {
+              if (value !== null) setValue("dmp.metadata.researchPhase", value)
+            }}
+          >
+            {researchPhases.map((phase) => (
+              <ToggleButton key={phase} value={phase} sx={{ textTransform: "none", px: "1.5rem" }}>
+                {phase}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
         <GrdmProject sx={{ mt: "1rem" }} isNew={isNew} project={project} projects={projects} />
         <Divider sx={{ my: "1.5rem" }} />
         <Box sx={{ display: "flex", flexDirection: "column" }}>
