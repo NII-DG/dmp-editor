@@ -88,23 +88,36 @@
 - `src/hooks/useKakenProject.ts` (新規作成)
 - `src/components/EditProject/ProjectInfoSection.tsx` (変更)
 
+**KAKEN API → DMP フィールドのマッピング**:
+
+| DMP フィールド | KAKEN `Project` のソース | 備考 |
+|---|---|---|
+| `fundingAgency` | `allocations[0].name` | 配分区分名 (例: "科学研究費助成事業") |
+| `programName` | `allocations[0].name` | `fundingAgency` と同一 or 細分化が必要な場合は別途確認 |
+| `programCode` | `allocations[0].code` | 配分区分コード |
+| `projectCode` | `awardNumber` | KAKEN の課題番号 (例: "23K12345") |
+| `projectName` | `title` | 日本語タイトル |
+| `adoptionYear` | `periodOfAward.startFiscalYear` | 採択年度 (数値→文字列変換) |
+| `startYear` | `periodOfAward.startFiscalYear` | 事業開始年度 |
+| `endYear` | `periodOfAward.endFiscalYear` | 事業終了年度 |
+
 **作業内容**:
 1. `useKakenProject` カスタムフックの作成
-   - `@hirakinii-packages/kaken-api-client-typescript` を使って KAKEN プロジェクト情報を取得
-   - TanStack Query (`useQuery`) でキャッシュ管理
+   - `KakenApiClient` を `useCache: false` で初期化 (ブラウザではファイルキャッシュ不可)
+   - `client.projects.search({ projectNumber: kakenNumber })` で検索
+   - 結果の `items[0]` を DMP フィールドにマッピングする変換関数 `kakenProjectToDmpProjectInfo` を作成
+   - TanStack Query (`useQuery`) でキャッシュ管理、`enabled: false` + 手動 `refetch` で検索ボタン押下時に発火
 2. `ProjectInfoSection.tsx` に KAKEN 検索 UI を追加
-   - セクションヘッダー下に「KAKEN番号で自動補完」入力欄と検索ボタンを追加
-   - 検索成功時、以下のフィールドを自動補完:
-     - `fundingAgency` (資金配分機関情報)
-     - `programName` (プログラム名)
-     - `programCode` (プログラム情報コード)
-     - `projectCode` (体系的番号)
-     - `projectName` (プロジェクト名)
-     - `adoptionYear` / `startYear` / `endYear` (年度情報)
+   - セクションヘッダー下に「KAKEN番号で自動補完」入力欄 (`TextField`) と検索ボタンを追加
+   - 検索成功時、上記マッピングで各フィールドを `setValue()` で自動補完
    - ローディング状態・エラー状態の表示
+
+**注意事項**:
+- `KakenApiClient` のファイルキャッシュ (`useCache`) はブラウザ環境では動作しないため **`useCache: false`** を指定する
 
 **TDD**:
 - `test/hooks/useKakenProject.test.ts` - フック単体テスト (モック使用)
+  - `KakenApiClient` をモックし、各フィールドが正しくマッピングされることを確認
 
 ---
 
@@ -113,14 +126,35 @@
 **目的**: `@hirakinii-packages/grdm-api-typescript` を使い、GRDM固有のメタデータ(日本語氏名・ファイルサイズ等)を活用する
 
 **対象ファイル**:
-- `src/grdmClient.ts` または新規 `src/grdmExtendedClient.ts` (検討)
-- `src/hooks/useUser.ts` (変更)
-- `src/pages/EditProject.tsx` (変更の可能性)
+- `src/grdmClient.ts` (変更: `getMeResponseSchema` に日本語名フィールドを追加)
+- `src/hooks/useUser.ts` (変更: `User` 型と `toUser` に日本語名を追加)
+- `src/hooks/useFileMetadata.ts` (新規作成)
+- `src/dmp.ts` (変更可能性: `PersonInfo.lastName/firstName` は日本語名を優先)
+
+**現状の課題**:
+- 既存 `User` インターフェースは `givenName` / `familyName` (英語名) のみ
+- 既存 `getMeResponseSchema` に `given_name_ja` / `family_name_ja` フィールドなし
+- `initDmp` は `user.familyName` / `user.givenName` を使用 → 英語名で初期化されてしまう
 
 **作業内容**:
-1. パッケージのAPIを調査し、既存 `grdmClient.ts` と重複する機能を整理
-2. 担当者情報初期化 (`initDmp`) で日本語氏名 (`family_name_ja`, `given_name_ja` 等) を優先表示
-3. ファイルリンク時にファイルサイズ・メタデータを GRDM パッケージ経由で取得
+1. 日本語氏名対応 (担当者情報初期化の改善)
+   - `getMeResponseSchema` に `given_name_ja` / `family_name_ja` を **optional** フィールドとして追加
+   - `User` 型に `givenNameJa?: string | null` / `familyNameJa?: string | null` を追加
+   - `toUser()` でこれらをマッピング
+   - `initDmp()` で日本語名が存在する場合は優先、なければ英語名にフォールバック:
+     ```typescript
+     lastName: user.familyNameJa ?? user.familyName,
+     firstName: user.givenNameJa ?? user.givenName,
+     ```
+2. ファイルメタデータ取得 (ファイルリンク時のサイズ表示)
+   - `GrdmClient` を使い `fileMetadata.getByProject(projectId)` でファイルサイズを取得
+   - `GrdmFileMetadataSchema` の `grdm-file:file-size` フィールドを利用
+   - 既存の `FilesNode.attributes.size` が `null` の場合のフォールバック先として活用
+   - `useFileMetadata` フックを作成し TanStack Query で管理
+
+**方針の確定 (タスク1調査結果より)**:
+- ノード操作・ファイル R/W・DMP R/W は **既存 `grdmClient.ts` を維持**
+- `GrdmClient` は**ファイルメタデータ取得のみ**に限定して使用
 
 ---
 
@@ -150,28 +184,38 @@
 **目的**: 「計画時」「研究中」「報告時」という研究フェーズを DMP に追加し、フェーズに応じてバリデーションルールと表示項目を変化させる
 
 **対象ファイル**:
-- `src/dmp.ts` (変更: `researchPhase` フィールド追加)
+- `src/dmp.ts` (変更: `researchPhase` フィールド追加、対象フィールドを optional 化)
 - `src/components/EditProject/FormCard.tsx` (変更: フェーズセレクタ追加)
 - `src/components/EditProject/DataInfoSection.tsx` (変更: 条件付きバリデーション)
 
 **作業内容**:
 1. `dmp.ts` に研究フェーズ型を追加:
    ```typescript
-   export const researchPhase = ["計画時", "研究中", "報告時"] as const
-   export type ResearchPhase = typeof researchPhase[number]
+   export const researchPhases = ["計画時", "研究中", "報告時"] as const
+   export type ResearchPhase = typeof researchPhases[number]
    ```
-   `dmpMetadataSchema` に `researchPhase` フィールドを追加
-2. `FormCard.tsx` にフェーズセレクタ (Select or ToggleButtonGroup) を追加
-3. `DataInfoSection.tsx` でフェーズに応じた必須フィールド制御:
+   `dmpMetadataSchema` に `researchPhase: z.enum(researchPhases).default("計画時")` を追加
+2. `dataInfoSchema` のフェーズ依存フィールドを optional 化:
+   - `repository`, `plannedPublicationDate`, `publicationDate` を `z.string().nullable().optional()` に変更
+   - Zod レベルの必須バリデーションを外し、フォームレベルで動的に制御する
+3. `FormCard.tsx` にフェーズセレクタ (MUI `ToggleButtonGroup`) を追加
+   - `methods.setValue("metadata.researchPhase", phase)` で更新
+4. `DataInfoSection.tsx` でフェーズに応じた React Hook Form バリデーション制御:
+
    | フィールド | 計画時 | 研究中 | 報告時 |
    |-----------|--------|--------|--------|
    | `repository` | 任意 | 任意 | 必須 |
    | `plannedPublicationDate` | 任意 | 任意 | 必須 |
    | `publicationDate` | 任意 | 必須 | 必須 |
-4. 後方互換性: 既存 DMP JSON の `researchPhase` が未定義の場合は `"計画時"` をデフォルト値として扱う
+
+   実装方法: `useWatch({ name: "metadata.researchPhase" })` でフェーズを監視し、
+   `register("dataInfo.N.repository", { required: phase === "報告時" })` のように動的に rules を変更する
+
+5. `readDmpFile` の後方互換性: `researchPhase` が未定義の場合は Zod の `.default("計画時")` が自動的にフォールバック
 
 **TDD**:
-- `test/EditPage.test.tsx` にフェーズ切り替えテストを追加
+- `test/components/DataInfoSection.test.tsx` にフェーズ切り替えテストを追加
+  - フェーズ「計画時」→ `repository` が任意、フェーズ「報告時」→ `repository` が必須 を確認
 
 ---
 
