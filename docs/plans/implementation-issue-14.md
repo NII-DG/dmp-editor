@@ -1,0 +1,222 @@
+# Issue #14: 内部フィードバック対応 実装計画
+
+## 現状分析
+
+### 技術スタック
+- React 18 + TypeScript + Vite
+- MUI v7 (UIコンポーネント)
+- React Hook Form + Zod (フォーム管理・バリデーション)
+- TanStack Query (データフェッチ・キャッシュ)
+- Recoil (グローバル状態管理)
+
+### 主要ファイル
+| ファイル | 役割 |
+|----------|------|
+| `src/dmp.ts` | DMP の型定義・Zodスキーマ・初期値 |
+| `src/grdmClient.ts` | GRDM API クライアント (直接 fetch) |
+| `src/pages/EditProject.tsx` | DMP 編集ページ |
+| `src/components/EditProject/ProjectInfoSection.tsx` | プロジェクト情報フォーム |
+| `src/components/EditProject/DataInfoSection.tsx` | 研究データ情報フォーム |
+| `src/components/EditProject/PersonInfoSection.tsx` | 担当者情報フォーム |
+| `src/components/EditProject/ProjectTableSection.tsx` | GRDM プロジェクト関連付けテーブル |
+| `src/components/EditProject/FileTreeSection.tsx` | GRDM ファイルツリー |
+| `src/components/EditProject/FormCard.tsx` | 保存ボタン含む外枠カード |
+
+---
+
+## 実装タスク一覧
+
+### タスク 1: 外部パッケージのインストールと API 調査
+
+**目的**: 2つの外部パッケージを導入し、提供するAPI・型を確認する
+
+**作業内容**:
+1. `@hirakinii-packages/kaken-api-client-typescript` をインストール
+2. `@hirakinii-packages/grdm-api-typescript` をインストール
+3. 各パッケージのエクスポート型・関数を確認し、既存 `grdmClient.ts` との関係を整理
+
+**完了条件**: パッケージがインストールされ、TypeScript のビルドが通る
+
+---
+
+### タスク 2: KAKEN API 統合 (プロジェクト情報自動補完)
+
+**目的**: KAKEN API を使い、プロジェクト番号から `ProjectInfoSection` の入力フィールドを自動補完する
+
+**対象ファイル**:
+- `src/hooks/useKakenProject.ts` (新規作成)
+- `src/components/EditProject/ProjectInfoSection.tsx` (変更)
+
+**作業内容**:
+1. `useKakenProject` カスタムフックの作成
+   - `@hirakinii-packages/kaken-api-client-typescript` を使って KAKEN プロジェクト情報を取得
+   - TanStack Query (`useQuery`) でキャッシュ管理
+2. `ProjectInfoSection.tsx` に KAKEN 検索 UI を追加
+   - セクションヘッダー下に「KAKEN番号で自動補完」入力欄と検索ボタンを追加
+   - 検索成功時、以下のフィールドを自動補完:
+     - `fundingAgency` (資金配分機関情報)
+     - `programName` (プログラム名)
+     - `programCode` (プログラム情報コード)
+     - `projectCode` (体系的番号)
+     - `projectName` (プロジェクト名)
+     - `adoptionYear` / `startYear` / `endYear` (年度情報)
+   - ローディング状態・エラー状態の表示
+
+**TDD**:
+- `test/hooks/useKakenProject.test.ts` - フック単体テスト (モック使用)
+
+---
+
+### タスク 3: GRDM パッケージ統合 (担当者情報・ファイルメタデータ同期)
+
+**目的**: `@hirakinii-packages/grdm-api-typescript` を使い、GRDM固有のメタデータ(日本語氏名・ファイルサイズ等)を活用する
+
+**対象ファイル**:
+- `src/grdmClient.ts` または新規 `src/grdmExtendedClient.ts` (検討)
+- `src/hooks/useUser.ts` (変更)
+- `src/pages/EditProject.tsx` (変更の可能性)
+
+**作業内容**:
+1. パッケージのAPIを調査し、既存 `grdmClient.ts` と重複する機能を整理
+2. 担当者情報初期化 (`initDmp`) で日本語氏名 (`family_name_ja`, `given_name_ja` 等) を優先表示
+3. ファイルリンク時にファイルサイズ・メタデータを GRDM パッケージ経由で取得
+
+---
+
+### タスク 4: ROR API 統合 (データ管理機関サジェスト)
+
+**目的**: `DataInfoSection.tsx` の「データ管理機関」フィールドを MUI Autocomplete + ROR API 検索に変更し、`rorId` を自動補完する
+
+**対象ファイル**:
+- `src/hooks/useRorSearch.ts` (新規作成)
+- `src/components/EditProject/DataInfoSection.tsx` (変更)
+
+**作業内容**:
+1. `useRorSearch` カスタムフックの作成
+   - ROR API (`https://api.ror.org/organizations?query=...`) を呼び出す
+   - デバウンス処理 (300ms) でリアルタイム検索
+2. `DataInfoSection.tsx` の `dataManagementAgency` フィールドを `TextField` から MUI `Autocomplete` に変更
+   - 候補選択時に `dataManagementAgency` と `rorId` を自動補完
+   - 自由入力も引き続き可能
+
+**TDD**:
+- `test/hooks/useRorSearch.test.ts` - フック単体テスト (fetch モック使用)
+
+---
+
+### タスク 5: 研究フェーズ別バリデーション (プログレッシブ・ディスクロージャー)
+
+**目的**: 「計画時」「研究中」「報告時」という研究フェーズを DMP に追加し、フェーズに応じてバリデーションルールと表示項目を変化させる
+
+**対象ファイル**:
+- `src/dmp.ts` (変更: `researchPhase` フィールド追加)
+- `src/components/EditProject/FormCard.tsx` (変更: フェーズセレクタ追加)
+- `src/components/EditProject/DataInfoSection.tsx` (変更: 条件付きバリデーション)
+
+**作業内容**:
+1. `dmp.ts` に研究フェーズ型を追加:
+   ```typescript
+   export const researchPhase = ["計画時", "研究中", "報告時"] as const
+   export type ResearchPhase = typeof researchPhase[number]
+   ```
+   `dmpMetadataSchema` に `researchPhase` フィールドを追加
+2. `FormCard.tsx` にフェーズセレクタ (Select or ToggleButtonGroup) を追加
+3. `DataInfoSection.tsx` でフェーズに応じた必須フィールド制御:
+   | フィールド | 計画時 | 研究中 | 報告時 |
+   |-----------|--------|--------|--------|
+   | `repository` | 任意 | 任意 | 必須 |
+   | `plannedPublicationDate` | 任意 | 任意 | 必須 |
+   | `publicationDate` | 任意 | 必須 | 必須 |
+4. 後方互換性: 既存 DMP JSON の `researchPhase` が未定義の場合は `"計画時"` をデフォルト値として扱う
+
+**TDD**:
+- `test/EditPage.test.tsx` にフェーズ切り替えテストを追加
+
+---
+
+### タスク 6: トースト通知の実装 (マイクロインタラクション)
+
+**目的**: 保存成功・失敗・API 通信中などのシステム応答をユーザーに視覚的にフィードバックする
+
+**対象ファイル**:
+- `src/components/SnackbarProvider.tsx` (新規作成)
+- `src/hooks/useSnackbar.ts` (新規作成)
+- `src/App.tsx` (変更: Provider 追加)
+- `src/components/EditProject/FormCard.tsx` (変更: 保存結果通知)
+
+**作業内容**:
+1. MUI `Snackbar` + `Alert` を使った通知コンポーネント作成
+   - Context を使ってアプリ全体から呼び出せる `useSnackbar()` フックを提供
+   - severity: `success` / `error` / `info`
+   - auto-hide: 4秒後
+2. `FormCard.tsx` の保存ボタン動作に通知を追加:
+   - 保存成功: "DMPを保存しました" (success)
+   - 保存失敗: "保存に失敗しました" (error)
+3. KAKEN/ROR API 検索にも通知を追加:
+   - 検索失敗: "情報の取得に失敗しました" (error)
+
+**TDD**:
+- `test/components/SnackbarProvider.test.tsx`
+
+---
+
+### タスク 7: 未保存変更の離脱警告
+
+**目的**: 編集状態を監視し、保存せずにページを離れようとした際に警告ダイアログを表示してデータ消失を防ぐ
+
+**対象ファイル**:
+- `src/hooks/useUnsavedChangesWarning.ts` (新規作成)
+- `src/pages/EditProject.tsx` (変更)
+
+**作業内容**:
+1. `useUnsavedChangesWarning` フック作成:
+   - React Hook Form の `formState.isDirty` を監視
+   - `beforeunload` イベントでブラウザ標準の離脱警告を表示
+   - React Router v7 の `useBlocker` でSPA内ナビゲーション時に確認ダイアログを表示
+2. `EditProject.tsx` にフックを組み込む
+3. 保存完了後は `methods.reset(savedValues)` で dirty フラグをリセット
+
+**TDD**:
+- `test/hooks/useUnsavedChangesWarning.test.ts`
+
+---
+
+### タスク 8: E2E テスト (Playwright) 導入
+
+**目的**: 重要なユーザーフローを自動テストで保護する
+
+**対象ファイル**:
+- `playwright.config.ts` (新規作成)
+- `e2e/` ディレクトリ (新規作成)
+
+**作業内容**:
+1. Playwright をインストール (`npm install --save-dev @playwright/test`)
+2. 以下のシナリオの E2E テストを実装:
+   - ログイン → DMP 新規作成 → 保存 のフロー
+   - 未保存遷移の警告表示確認
+   - KAKEN 検索からの自動補完確認
+
+---
+
+## 実装順序と依存関係
+
+```
+タスク 1 (パッケージ調査)
+  ├─→ タスク 2 (KAKEN統合)
+  ├─→ タスク 3 (GRDMパッケージ統合)
+  └─→ タスク 4 (ROR統合)
+
+タスク 5 (研究フェーズ)  ← 独立して実装可能
+タスク 6 (トースト通知) ← 独立して実装可能
+タスク 7 (離脱警告)     ← 独立して実装可能
+タスク 8 (E2E)         ← タスク 1-7 完了後
+```
+
+## 注意事項・リスク
+
+| リスク | 対策 |
+|--------|------|
+| 外部パッケージのAPI仕様が不明 | タスク1でAPI調査を最優先、必要に応じて各タスクを修正 |
+| `@hirakinii-packages/grdm-api-typescript` と既存 `grdmClient.ts` の重複 | パッケージ調査後に方針決定。既存コードは段階的に移行 |
+| 後方互換性 (既存の保存済みDMPの読み込み) | `readDmpFile` で `researchPhase` 未定義時のフォールバック処理を実装 |
+| `useBlocker` の React Router v7 での動作 | テストで動作確認後に実装 |
