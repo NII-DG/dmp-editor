@@ -15,10 +15,23 @@ const MIN_QUERY_LENGTH = 2
 const rorClient = new RorClient({ clientId: "dmp-editor" })
 
 /**
- * Extracts the display name from a ROR organization's names array.
- * Prefers the name with type 'ror_display'; falls back to the first entry.
+ * Returns true if the query contains Japanese characters
+ * (hiragana, katakana, or CJK unified ideographs).
  */
-function extractDisplayName(names: RorApiOrganization["names"]): string {
+function isJapaneseQuery(query: string): boolean {
+  return /[\u3040-\u30FF\u4E00-\u9FFF\uF900-\uFAFF]/.test(query)
+}
+
+/**
+ * Extracts the display name from a ROR organization's names array.
+ * When preferredLang is specified, prefers a name matching that language.
+ * Falls back to the name with type 'ror_display', then to the first entry.
+ */
+function extractDisplayName(names: RorApiOrganization["names"], preferredLang?: string): string {
+  if (preferredLang) {
+    const langMatch = names.find((n) => n.lang === preferredLang)
+    if (langMatch) return langMatch.value
+  }
   const displayName = names.find((n) => n.types.includes("ror_display"))
   return (displayName ?? names[0])?.value ?? ""
 }
@@ -41,13 +54,14 @@ export function useRorSearch(query: string): { results: RorOrganization[]; isLoa
     }
 
     let cancelled = false
+    const preferredLang = isJapaneseQuery(query) ? "ja" : undefined
 
     const timer = setTimeout(async () => {
       setIsLoading(true)
       try {
         const orgs = await rorClient.searchOrganizations(query)
         if (!cancelled) {
-          setResults(orgs.map((org) => ({ id: org.id, name: extractDisplayName(org.names) })))
+          setResults(orgs.map((org) => ({ id: org.id, name: extractDisplayName(org.names, preferredLang) })))
         }
       } catch (error) {
         if (!cancelled) {
@@ -66,6 +80,5 @@ export function useRorSearch(query: string): { results: RorOrganization[]; isLoa
       clearTimeout(timer)
     }
   }, [query])
-
   return { results, isLoading }
 }

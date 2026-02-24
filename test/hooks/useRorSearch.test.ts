@@ -102,6 +102,51 @@ describe("useRorSearch", () => {
     expect(result.current.results[0].name).toBe("European Organization for Nuclear Research")
   })
 
+  it("prefers Japanese name (lang: 'ja') over ror_display for Japanese query", async () => {
+    mockSearchOrganizations.mockResolvedValue([{
+      id: "https://ror.org/02mhbdp94",
+      names: [
+        { value: "The University of Tokyo", types: ["ror_display"], lang: null },
+        { value: "東京大学", types: ["label"], lang: "ja" },
+      ],
+    }])
+    const { result } = renderHook(() => useRorSearch("東京大学"))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(result.current.results[0].name).toBe("東京大学")
+  })
+
+  it("falls back to ror_display when no Japanese name exists for Japanese query", async () => {
+    mockSearchOrganizations.mockResolvedValue([{
+      id: "https://ror.org/01ggx4157",
+      names: [
+        { value: "CERN", types: ["acronym"], lang: null },
+        { value: "European Organization for Nuclear Research", types: ["ror_display"], lang: null },
+      ],
+    }])
+    const { result } = renderHook(() => useRorSearch("欧州原子核研究機構"))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(result.current.results[0].name).toBe("European Organization for Nuclear Research")
+  })
+
+  it("uses ror_display for non-Japanese query even when Japanese name exists", async () => {
+    mockSearchOrganizations.mockResolvedValue([{
+      id: "https://ror.org/02mhbdp94",
+      names: [
+        { value: "The University of Tokyo", types: ["ror_display"], lang: null },
+        { value: "東京大学", types: ["label"], lang: "ja" },
+      ],
+    }])
+    const { result } = renderHook(() => useRorSearch("Tokyo"))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(result.current.results[0].name).toBe("The University of Tokyo")
+  })
+
   it("falls back to first name when ror_display is absent", async () => {
     mockSearchOrganizations.mockResolvedValue([{
       id: "https://ror.org/01ggx4157",

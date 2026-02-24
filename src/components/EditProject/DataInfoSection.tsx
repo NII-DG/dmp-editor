@@ -328,11 +328,13 @@ function DataManagementAgencyField({ label, required, helpChip }: DataManagement
           </Box>
           <Autocomplete<RorOrganization, false, false, true>
             freeSolo
+            filterOptions={(x) => x}
             options={results}
             getOptionLabel={(option) => typeof option === "string" ? option : (option.name ?? "")}
             inputValue={field.value ?? ""}
             onInputChange={(_, newValue, reason) => {
               // Always keep the form field in sync with the input text
+              console.log(results)
               field.onChange(newValue)
               // Only trigger search when the user is actively typing or clearing
               if (reason === "input" || reason === "clear") {
