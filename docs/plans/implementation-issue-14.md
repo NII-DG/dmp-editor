@@ -31,11 +31,52 @@
 **目的**: 2つの外部パッケージを導入し、提供するAPI・型を確認する
 
 **作業内容**:
-1. `@hirakinii-packages/kaken-api-client-typescript` をインストール
-2. `@hirakinii-packages/grdm-api-typescript` をインストール
-3. 各パッケージのエクスポート型・関数を確認し、既存 `grdmClient.ts` との関係を整理
+1. `@hirakinii-packages/kaken-api-client-typescript` をインストール　→　完了
+2. `@hirakinii-packages/grdm-api-typescript` をインストール　→　完了
+3. 各パッケージのエクスポート型・関数を確認し、既存 `grdmClient.ts` との関係を整理　→　完了
 
-**完了条件**: パッケージがインストールされ、TypeScript のビルドが通る
+**完了条件**: パッケージがインストールされ、TypeScript のビルドが通る　→　**完了**
+
+---
+
+### タスク 1: API 調査結果サマリー
+
+#### `@hirakinii-packages/kaken-api-client-typescript`
+
+| 要素 | 内容 |
+|------|------|
+| メインクラス | `KakenApiClient` |
+| プロジェクト検索 | `client.projects.search({ projectNumber: "..." })` → `ProjectsResponse` |
+| 主要型 | `Project` (id, awardNumber, title, titleEn, periodOfAward, members, allocations, institutions) |
+| 氏名型 | `PersonName` (fullName, familyName, givenName, familyNameReading, givenNameReading) |
+| 助成期間 | `PeriodOfAward` (startFiscalYear, endFiscalYear) |
+| キャッシュ | ファイルベースのキャッシュ内蔵 (useCache オプション) |
+
+**既存コードとの関係**: `grdmClient.ts` に KAKEN API 関連機能なし。タスク2で新規追加。
+
+#### `@hirakinii-packages/grdm-api-typescript`
+
+| 要素 | 内容 |
+|------|------|
+| メインクラス | `GrdmClient extends OsfClient` |
+| プロジェクトメタ | `client.projectMetadata.listByNode(nodeId)` / `getById(id)` → `GrdmRegisteredMeta` |
+| ファイルメタ | `client.fileMetadata.getByProject(projectId)` / `findFileByPath()` / `getActiveMetadata()` |
+| 登録済みメタデータ | `GrdmRegisteredMeta` (funder, programNameJa/En, projectNameJa/En, japanGrantNumber, fundingStreamCode, grdmFiles) |
+| ファイルメタデータ | `GrdmFileMetadataSchema` (grdm-file:file-size, grdm-file:creators, etc.) |
+| ユーティリティ | `inferV1BaseUrl(v2BaseUrl)` - v2 URL から v1 URL を推論 |
+
+**既存 `grdmClient.ts` との重複・関係**:
+
+| 機能 | 既存 `grdmClient.ts` | `grdm-api-typescript` | 方針 |
+|------|------|------|------|
+| ユーザー情報取得 | `getMe(token)` (fetch直接) | OsfClient.users リソース | **既存を維持** (日本語名フィールドは既存に既にある) |
+| ノード一覧 | `getNodes(token, ...)` | OsfClient.nodes | **既存を維持** |
+| ファイル操作 | `getFiles`, `readFile`, `writeFile` | OsfClient.files | **既存を維持** |
+| DMP ファイル R/W | `readDmpFile`, `writeDmpFile` | なし | **既存のみ** |
+| **プロジェクトメタ** | **なし** | **`GrdmClient.projectMetadata`** | **新パッケージを活用** |
+| **ファイルメタ** | **なし** | **`GrdmClient.fileMetadata`** | **新パッケージを活用** |
+
+**重要観察**: 既存 `getMe` の `GetMeResponse` には `employment[].institution_ja` / `department_ja` が既にある。ただし `family_name_ja` / `given_name_ja` などの日本語氏名フィールドは**含まれていない**。タスク3では新パッケージで日本語氏名取得の方法を検討が必要。
 
 ---
 
