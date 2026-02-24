@@ -158,7 +158,7 @@
 
 ---
 
-### タスク 4: ROR API 統合 (データ管理機関サジェスト)
+### タスク 4: ROR API 統合 (データ管理機関サジェスト)　→　完了
 
 **目的**: `DataInfoSection.tsx` の「データ管理機関」フィールドを MUI Autocomplete + ROR API 検索に変更し、`rorId` を自動補完する
 
