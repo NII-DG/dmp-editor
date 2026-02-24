@@ -74,6 +74,8 @@ export interface GetMeResponse {
       full_name: string
       given_name: string
       family_name: string
+      given_name_ja?: string | null
+      family_name_ja?: string | null
       social: {
         orcid?: string | null
         researcherId?: string | null
@@ -99,6 +101,8 @@ export const getMeResponseSchema = z.object({
       full_name: z.string(),
       given_name: z.string(),
       family_name: z.string(),
+      given_name_ja: z.string().optional().nullable(),
+      family_name_ja: z.string().optional().nullable(),
       social: z.object({
         orcid: z.string().optional().nullable(),
         researcherId: z.string().optional().nullable(),

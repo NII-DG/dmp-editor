@@ -9,6 +9,8 @@ export interface User {
   fullName: string
   givenName: string
   familyName: string
+  givenNameJa: string | null
+  familyNameJa: string | null
   orcid: string | null
   researcherId: string | null
   affiliation: string | null
@@ -28,6 +30,8 @@ export const toUser = (response: GetMeResponse): User => {
     fullName: response.data.attributes.full_name,
     givenName: response.data.attributes.given_name,
     familyName: response.data.attributes.family_name,
+    givenNameJa: response.data.attributes.given_name_ja ?? null,
+    familyNameJa: response.data.attributes.family_name_ja ?? null,
     orcid: response.data.attributes.social.orcid ?? null,
     researcherId: response.data.attributes.social.researcherId ?? null,
     affiliation,

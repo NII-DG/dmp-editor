@@ -131,8 +131,8 @@ export interface DmpFormValues {
 export const initDmp = (user: User | null | undefined = null): Dmp => {
   const personInfo: PersonInfo[] = user ? [{
     role: ["研究代表者"],
-    lastName: user.familyName,
-    firstName: user.givenName,
+    lastName: user.familyNameJa ?? user.familyName,
+    firstName: user.givenNameJa ?? user.givenName,
     eRadResearcherId: user.researcherId ?? "",
     orcid: user.orcid ?? "",
     affiliation: user.affiliation ?? "",
