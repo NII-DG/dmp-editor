@@ -1,4 +1,4 @@
-/// <reference path="../../src/vite-env.d.ts" />
+import "../../src/vite-env.d.ts"
 import { KakenApiClient } from "@hirakinii-packages/kaken-api-client-typescript"
 import type { Project, ProjectsResponse } from "@hirakinii-packages/kaken-api-client-typescript"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
