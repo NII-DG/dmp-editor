@@ -6,7 +6,7 @@ import DeleteOutline from "@mui/icons-material/DeleteOutline"
 import EditOutlined from "@mui/icons-material/EditOutlined"
 import LinkOffOutlined from "@mui/icons-material/LinkOffOutlined"
 import OpenInNew from "@mui/icons-material/OpenInNew"
-import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, FormControl, Chip, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, Select, FormHelperText, Typography, Link } from "@mui/material"
+import { Autocomplete, Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, FormControl, Chip, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, Select, FormHelperText, Typography, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
 import React, { useState } from "react"
 import { useFormContext, useFieldArray, Controller, useForm, useFormState, FormProvider, useWatch } from "react-hook-form"
@@ -17,6 +17,8 @@ import SectionHeader from "@/components/EditProject/SectionHeader"
 import { accessRights, dataType, hasSensitiveData, initDataInfo, researchField } from "@/dmp"
 import type { DataInfo, DmpFormValues } from "@/dmp"
 import { formatDateToTimezone, ProjectInfo } from "@/grdmClient"
+import type { RorOrganization } from "@/hooks/useRorSearch"
+import { useRorSearch } from "@/hooks/useRorSearch"
 import { User } from "@/hooks/useUser"
 import theme from "@/theme"
 
@@ -294,6 +296,97 @@ const byteSizeToHumanReadable = (size?: number | null, decimals = 2): string => 
   }
 
   return `${readableSize.toFixed(i === 0 ? 0 : decimals)} ${units[i]}`
+}
+
+interface DataManagementAgencyFieldProps {
+  label: string
+  required: boolean
+  helpChip?: React.ReactNode
+}
+
+/**
+ * Autocomplete field for the data management agency with ROR organization search.
+ * Fetches suggestions from the ROR API via the /ror-api proxy (debounced 300ms).
+ * When an option is selected, both `dataManagementAgency` and `rorId` are set automatically.
+ * Free text input is also supported.
+ */
+function DataManagementAgencyField({ label, required, helpChip }: DataManagementAgencyFieldProps) {
+  const { control, setValue } = useFormContext<DataInfo>()
+  const [searchQuery, setSearchQuery] = useState("")
+  const { results, isLoading } = useRorSearch(searchQuery)
+
+  return (
+    <Controller
+      name="dataManagementAgency"
+      control={control}
+      rules={required ? { required: `${label} は必須です` } : {}}
+      render={({ field, fieldState: { error } }) => (
+        <FormControl fullWidth>
+          <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+            <OurFormLabel label={label} required={required} />
+            {helpChip && <HelpChip text={helpChip} />}
+          </Box>
+          <Autocomplete<RorOrganization, false, false, true>
+            freeSolo
+            options={results}
+            getOptionLabel={(option) => typeof option === "string" ? option : option.name}
+            inputValue={field.value ?? ""}
+            onInputChange={(_, newValue, reason) => {
+              // Always keep the form field in sync with the input text
+              field.onChange(newValue)
+              // Only trigger search when the user is actively typing or clearing
+              if (reason === "input" || reason === "clear") {
+                setSearchQuery(newValue)
+              }
+            }}
+            onChange={(_, newValue) => {
+              if (newValue !== null && typeof newValue !== "string") {
+                // ROR option selected: set both agency name and ROR ID
+                field.onChange(newValue.name)
+                setValue("rorId", newValue.id)
+              } else if (newValue === null) {
+                // Cleared via X button: also clear the ROR ID
+                setValue("rorId", undefined)
+              }
+            }}
+            loading={isLoading}
+            loadingText="検索中..."
+            noOptionsText={searchQuery.length >= 2 ? "候補なし" : "2文字以上入力すると候補が表示されます"}
+            size="small"
+            renderOption={(props, option) => (
+              <li {...props} key={option.id}>
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                  <Typography variant="body2">{option.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{option.id}</Typography>
+                </Box>
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                inputRef={field.ref}
+                error={!!error}
+                helperText={error?.message}
+                placeholder="e.g., ○○大学"
+                size="small"
+                slotProps={{
+                  input: {
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {isLoading ? <CircularProgress size={16} color="inherit" /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  },
+                }}
+              />
+            )}
+          />
+        </FormControl>
+      )}
+    />
+  )
 }
 
 interface DataInfoSectionProps {
@@ -659,68 +752,81 @@ export default function DataInfoSection({ sx, user, projects }: DataInfoSectionP
             sx={{ mt: "0.5rem", mx: "1rem" }}
           />
           <DialogContent sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "0.5rem", mx: "1rem" }}>
-            {openIndex !== null && formData.map(({ key, label, required, helperText, placeholder, type, selectMultiple, helpChip, minRows }) => (
-              <Controller
-                key={key}
-                name={key}
-                control={dialogMethods.control}
-                rules={getValidationRules(key, required, label)}
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl fullWidth>
-                    <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
-                      <OurFormLabel label={label} required={required} />
-                      {helpChip && <HelpChip text={helpChip} />}
-                    </Box>
-                    {!selectMultiple ? (
-                      <TextField
-                        {...field}
-                        fullWidth
-                        variant="outlined"
-                        error={!!error}
-                        helperText={error?.message ?? helperText}
-                        placeholder={placeholder}
-                        value={getValue(key)}
-                        onChange={(e) => updateValue(key, e.target.value)}
-                        type={type === "date" ? "date" : "text"}
-                        select={type === "select"}
-                        size="small"
-                        multiline={minRows !== undefined && minRows > 1}
-                        minRows={minRows}
-                      >
-                        {type === "select" &&
-                          getOptions(key).map((option) => (
-                            <MenuItem key={option} value={option} children={option} />
-                          ))}
-                      </TextField>
-                    ) : (
-                      <>
-                        <Select
+            {openIndex !== null && formData.map(({ key, label, required, helperText, placeholder, type, selectMultiple, helpChip, minRows }) => {
+              // Render the data management agency field with ROR API autocomplete
+              if (key === "dataManagementAgency") {
+                return (
+                  <DataManagementAgencyField
+                    key={key}
+                    label={label}
+                    required={required}
+                    helpChip={helpChip}
+                  />
+                )
+              }
+              return (
+                <Controller
+                  key={key}
+                  name={key}
+                  control={dialogMethods.control}
+                  rules={getValidationRules(key, required, label)}
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl fullWidth>
+                      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+                        <OurFormLabel label={label} required={required} />
+                        {helpChip && <HelpChip text={helpChip} />}
+                      </Box>
+                      {!selectMultiple ? (
+                        <TextField
                           {...field}
-                          value={field.value ?? []}
                           fullWidth
                           variant="outlined"
                           error={!!error}
-                          multiple
+                          helperText={error?.message ?? helperText}
+                          placeholder={placeholder}
+                          value={getValue(key)}
+                          onChange={(e) => updateValue(key, e.target.value)}
+                          type={type === "date" ? "date" : "text"}
+                          select={type === "select"}
                           size="small"
-                          renderValue={(selected) => (
-                            <Box sx={{ display: "flex", flexDirection: "row", gap: "0.5rem" }}>
-                              {(selected as unknown as string[]).map((value) => (
-                                <Chip key={value} label={value} />
-                              ))}
-                            </Box>
-                          )}
+                          multiline={minRows !== undefined && minRows > 1}
+                          minRows={minRows}
                         >
-                          {getOptions(key).map((option) => (
-                            <MenuItem key={option} value={option} children={option} />
-                          ))}
-                        </Select>
-                        <FormHelperText error={!!error} children={error?.message ?? helperText} />
-                      </>
-                    )}
-                  </FormControl>
-                )}
-              />
-            ))}
+                          {type === "select" &&
+                            getOptions(key).map((option) => (
+                              <MenuItem key={option} value={option} children={option} />
+                            ))}
+                        </TextField>
+                      ) : (
+                        <>
+                          <Select
+                            {...field}
+                            value={field.value ?? []}
+                            fullWidth
+                            variant="outlined"
+                            error={!!error}
+                            multiple
+                            size="small"
+                            renderValue={(selected) => (
+                              <Box sx={{ display: "flex", flexDirection: "row", gap: "0.5rem" }}>
+                                {(selected as unknown as string[]).map((value) => (
+                                  <Chip key={value} label={value} />
+                                ))}
+                              </Box>
+                            )}
+                          >
+                            {getOptions(key).map((option) => (
+                              <MenuItem key={option} value={option} children={option} />
+                            ))}
+                          </Select>
+                          <FormHelperText error={!!error} children={error?.message ?? helperText} />
+                        </>
+                      )}
+                    </FormControl>
+                  )}
+                />
+              )
+            })}
           </DialogContent>
           <DialogActions sx={{ m: "0.5rem 1.5rem 1.5rem" }}>
             <Button

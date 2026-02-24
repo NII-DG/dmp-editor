@@ -29,6 +29,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/nrid-api/, ""),
       },
+      "/ror-api": {
+        target: "https://api.ror.org",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ror-api/, "/organizations"),
+      },
     },
   },
   preview: {
@@ -44,6 +49,11 @@ export default defineConfig({
         target: "https://nrid.nii.ac.jp",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/nrid-api/, ""),
+      },
+      "/ror-api": {
+        target: "https://api.ror.org",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ror-api/, "/organizations"),
       },
     },
   },
