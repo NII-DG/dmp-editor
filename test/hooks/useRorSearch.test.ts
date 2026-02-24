@@ -3,21 +3,30 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import { useRorSearch } from "../../src/hooks/useRorSearch"
 
-const mockFetch = vi.fn()
-vi.stubGlobal("fetch", mockFetch)
+const mockSearchOrganizations = vi.hoisted(() => vi.fn())
 
-const mockRorResponse = {
-  number_of_results: 2,
-  items: [
-    { id: "https://ror.org/02mhbdp94", name: "University of Tokyo" },
-    { id: "https://ror.org/01t18xk63", name: "Kyoto University" },
-  ],
-}
+vi.mock("@hirakinii-packages/ror-api-typescript", () => ({
+  RorClient: vi.fn().mockImplementation(() => ({
+    searchOrganizations: mockSearchOrganizations,
+  })),
+}))
+
+// Minimal ROR organization objects with the fields used by the hook
+const mockRorOrgs = [
+  {
+    id: "https://ror.org/02mhbdp94",
+    names: [{ value: "University of Tokyo", types: ["ror_display"] }],
+  },
+  {
+    id: "https://ror.org/01t18xk63",
+    names: [{ value: "Kyoto University", types: ["ror_display"] }],
+  },
+]
 
 describe("useRorSearch", () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    mockFetch.mockReset()
+    mockSearchOrganizations.mockReset()
   })
 
   afterEach(() => {
@@ -28,41 +37,39 @@ describe("useRorSearch", () => {
     const { result } = renderHook(() => useRorSearch(""))
     expect(result.current.results).toEqual([])
     expect(result.current.isLoading).toBe(false)
-    expect(mockFetch).not.toHaveBeenCalled()
+    expect(mockSearchOrganizations).not.toHaveBeenCalled()
   })
 
   it("does not fetch when query is shorter than 2 characters", () => {
     renderHook(() => useRorSearch("T"))
     act(() => { vi.advanceTimersByTime(300) })
-    expect(mockFetch).not.toHaveBeenCalled()
+    expect(mockSearchOrganizations).not.toHaveBeenCalled()
   })
 
   it("does not fetch before 300ms debounce period", () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => mockRorResponse })
+    mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     renderHook(() => useRorSearch("Tokyo"))
     act(() => { vi.advanceTimersByTime(299) })
-    expect(mockFetch).not.toHaveBeenCalled()
+    expect(mockSearchOrganizations).not.toHaveBeenCalled()
   })
 
-  it("fetches from ROR proxy endpoint after 300ms debounce", () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => mockRorResponse })
+  it("calls searchOrganizations after 300ms debounce", () => {
+    mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     renderHook(() => useRorSearch("Tokyo"))
     act(() => { vi.advanceTimersByTime(300) })
-    expect(mockFetch).toHaveBeenCalledOnce()
-    expect(mockFetch).toHaveBeenCalledWith("/ror-api?query=Tokyo")
+    expect(mockSearchOrganizations).toHaveBeenCalledOnce()
+    expect(mockSearchOrganizations).toHaveBeenCalledWith("Tokyo")
   })
 
-  it("encodes special characters in the query", () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => mockRorResponse })
+  it("passes the query as-is including Japanese characters", () => {
+    mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     renderHook(() => useRorSearch("東京大学"))
     act(() => { vi.advanceTimersByTime(300) })
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/ror-api?query=%E6%9D%B1%E4%BA%AC%E5%A4%A7%E5%AD%A6",
-    )
+    expect(mockSearchOrganizations).toHaveBeenCalledWith("東京大学")
   })
 
   it("returns mapped organization results after debounce", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => mockRorResponse })
+    mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     const { result } = renderHook(() => useRorSearch("Tokyo"))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
@@ -79,18 +86,39 @@ describe("useRorSearch", () => {
     expect(result.current.isLoading).toBe(false)
   })
 
-  it("returns empty results on API error response", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) })
-    const { result } = renderHook(() => useRorSearch("Tokyo"))
+  it("prefers ror_display name over other name types", async () => {
+    mockSearchOrganizations.mockResolvedValue([{
+      id: "https://ror.org/01ggx4157",
+      names: [
+        { value: "CERN Acronym", types: ["acronym"] },
+        { value: "European Organization for Nuclear Research", types: ["ror_display"] },
+        { value: "CERN Label", types: ["label"] },
+      ],
+    }])
+    const { result } = renderHook(() => useRorSearch("CERN"))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
-    expect(result.current.isLoading).toBe(false)
-    expect(result.current.results).toEqual([])
+    expect(result.current.results[0].name).toBe("European Organization for Nuclear Research")
   })
 
-  it("returns empty results on network error", async () => {
-    mockFetch.mockRejectedValue(new Error("Network error"))
+  it("falls back to first name when ror_display is absent", async () => {
+    mockSearchOrganizations.mockResolvedValue([{
+      id: "https://ror.org/01ggx4157",
+      names: [
+        { value: "First Name", types: ["label"] },
+        { value: "Second Name", types: ["alias"] },
+      ],
+    }])
+    const { result } = renderHook(() => useRorSearch("test"))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(result.current.results[0].name).toBe("First Name")
+  })
+
+  it("returns empty results on API error", async () => {
+    mockSearchOrganizations.mockRejectedValue(new Error("API error"))
     const { result } = renderHook(() => useRorSearch("Tokyo"))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
@@ -100,7 +128,7 @@ describe("useRorSearch", () => {
   })
 
   it("cancels previous debounce when query changes before it fires", () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => mockRorResponse })
+    mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     const { rerender } = renderHook(({ q }) => useRorSearch(q), {
       initialProps: { q: "Tokyo" },
     })
@@ -110,15 +138,15 @@ describe("useRorSearch", () => {
     rerender({ q: "Kyoto" })
     // Advance 200ms more (200ms since Kyoto started - still within debounce)
     act(() => { vi.advanceTimersByTime(200) })
-    expect(mockFetch).not.toHaveBeenCalled()
+    expect(mockSearchOrganizations).not.toHaveBeenCalled()
     // Advance 100ms more (300ms since Kyoto - debounce fires)
     act(() => { vi.advanceTimersByTime(100) })
-    expect(mockFetch).toHaveBeenCalledOnce()
-    expect(mockFetch).toHaveBeenCalledWith("/ror-api?query=Kyoto")
+    expect(mockSearchOrganizations).toHaveBeenCalledOnce()
+    expect(mockSearchOrganizations).toHaveBeenCalledWith("Kyoto")
   })
 
   it("clears results when query becomes empty", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => mockRorResponse })
+    mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     const { result, rerender } = renderHook(({ q }) => useRorSearch(q), {
       initialProps: { q: "Tokyo" },
     })

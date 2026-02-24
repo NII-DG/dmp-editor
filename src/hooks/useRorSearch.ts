@@ -1,3 +1,5 @@
+import type { RorOrganization as RorApiOrganization } from "@hirakinii-packages/ror-api-typescript"
+import { RorClient } from "@hirakinii-packages/ror-api-typescript"
 import { useEffect, useState } from "react"
 
 export interface RorOrganization {
@@ -7,23 +9,23 @@ export interface RorOrganization {
   name: string
 }
 
-interface RorApiItem {
-  id: string
-  name: string
-}
-
-interface RorApiResponse {
-  number_of_results: number
-  items: RorApiItem[]
-}
-
 const DEBOUNCE_MS = 300
 const MIN_QUERY_LENGTH = 2
 
+const rorClient = new RorClient({ clientId: "dmp-editor" })
+
+/**
+ * Extracts the display name from a ROR organization's names array.
+ * Prefers the name with type 'ror_display'; falls back to the first entry.
+ */
+function extractDisplayName(names: RorApiOrganization["names"]): string {
+  const displayName = names.find((n) => n.types.includes("ror_display"))
+  return (displayName ?? names[0])?.value ?? ""
+}
+
 /**
  * Custom hook for searching ROR (Research Organization Registry) organizations.
- * Debounces requests by 300ms to avoid excessive API calls.
- * Routes requests through the /ror-api local proxy to avoid CORS issues.
+ * Uses the @hirakinii-packages/ror-api-typescript client with 300ms debounce.
  * @param query - Search query string (minimum 2 characters to trigger a search)
  * @returns Object with results array and isLoading boolean
  */
@@ -43,13 +45,9 @@ export function useRorSearch(query: string): { results: RorOrganization[]; isLoa
     const timer = setTimeout(async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`/ror-api?query=${encodeURIComponent(query)}`)
-        if (!response.ok) {
-          throw new Error(`ROR API responded with status ${response.status}`)
-        }
-        const data: RorApiResponse = await response.json()
+        const orgs = await rorClient.searchOrganizations(query)
         if (!cancelled) {
-          setResults(data.items.map(({ id, name }) => ({ id, name })))
+          setResults(orgs.map((org) => ({ id: org.id, name: extractDisplayName(org.names) })))
         }
       } catch (error) {
         if (!cancelled) {
