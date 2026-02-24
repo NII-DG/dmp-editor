@@ -16,7 +16,7 @@
     "@emotion/styled": "^11.14.0",
     "@fontsource/roboto": "^5.1.1",
     "@hirakinii-packages/grdm-api-typescript": "^0.1.0",
-    "@hirakinii-packages/kaken-api-client-typescript": "^0.1.2",
+    "@hirakinii-packages/kaken-api-client-typescript": "^0.1.3",
     "@hookform/resolvers": "^5.0.1",
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
