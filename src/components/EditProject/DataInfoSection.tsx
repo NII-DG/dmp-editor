@@ -329,7 +329,7 @@ function DataManagementAgencyField({ label, required, helpChip }: DataManagement
           <Autocomplete<RorOrganization, false, false, true>
             freeSolo
             options={results}
-            getOptionLabel={(option) => typeof option === "string" ? option : option.name}
+            getOptionLabel={(option) => typeof option === "string" ? option : (option.name ?? "")}
             inputValue={field.value ?? ""}
             onInputChange={(_, newValue, reason) => {
               // Always keep the form field in sync with the input text
