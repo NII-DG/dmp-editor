@@ -1,3 +1,5 @@
+/// <reference path="../../src/vite-env.d.ts" />
+import { KakenApiClient } from "@hirakinii-packages/kaken-api-client-typescript"
 import type { Project, ProjectsResponse } from "@hirakinii-packages/kaken-api-client-typescript"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook } from "@testing-library/react"
@@ -98,6 +100,7 @@ describe("kakenProjectToDmpProjectInfo", () => {
 describe("useKakenProject", () => {
   beforeEach(() => {
     mockSearch.mockReset()
+    vi.mocked(KakenApiClient).mockClear()
   })
 
   it("does not fetch on initial render (enabled: false)", () => {
@@ -124,6 +127,26 @@ describe("useKakenProject", () => {
     expect(queryResult.data?.projectCode).toBe("23K12345")
     expect(queryResult.data?.projectName).toBe("テスト研究プロジェクト")
     expect(queryResult.data?.fundingAgency).toBe("科学研究費助成事業")
+  })
+
+  it("passes appId from KAKEN_APP_ID to KakenApiClient constructor", async () => {
+    const mockResponse: ProjectsResponse = {
+      rawData: {},
+      projects: [mockProject],
+      totalResults: 1,
+    }
+    mockSearch.mockResolvedValueOnce(mockResponse)
+
+    const { result } = renderHook(() => useKakenProject("23K12345"), { wrapper: createWrapper() })
+    await result.current.refetch()
+
+    // appId is passed from the KAKEN_APP_ID build-time constant (empty string becomes undefined)
+    // fetchFn rewrites KAKEN/NRID URLs to proxy paths to avoid CORS issues
+    expect(vi.mocked(KakenApiClient)).toHaveBeenCalledWith({
+      useCache: false,
+      appId: KAKEN_APP_ID || undefined,
+      fetchFn: expect.any(Function),
+    })
   })
 
   it("returns null when no projects found", async () => {
