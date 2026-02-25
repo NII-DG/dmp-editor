@@ -1,3 +1,11 @@
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@mui/material"
 import { useEffect } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
@@ -11,6 +19,7 @@ import { initDmp, DmpFormValues } from "@/dmp"
 import { useDmp } from "@/hooks/useDmp"
 import { useProjectInfo } from "@/hooks/useProjectInfo"
 import { useProjects } from "@/hooks/useProjects"
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning"
 import { useUser } from "@/hooks/useUser"
 
 interface EditProjectProps {
@@ -53,6 +62,8 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
     }
   }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data])
 
+  const blocker = useUnsavedChangesWarning(methods.formState.isDirty)
+
   if (loading) {
     return (
       <Frame noAuth>
@@ -76,6 +87,23 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
         <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data!} projects={projectsQuery.data!} />
         <ExportDmpCard sx={{ mt: "1.5rem" }} />
       </FormProvider>
+
+      <Dialog open={blocker.state === "blocked"} onClose={() => blocker.reset?.()}>
+        <DialogTitle>{"未保存の変更があります"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {"保存せずにページを離れると、変更内容が失われます。続けますか？"}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => blocker.reset?.()} color="primary">
+            {"このページに留まる"}
+          </Button>
+          <Button onClick={() => blocker.proceed?.()} color="error" autoFocus>
+            {"変更を破棄して離れる"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Frame>
   )
 }

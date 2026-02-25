@@ -31,7 +31,7 @@ type SaveState = "idle" | "saving" | "saved" | "error"
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { getValues, handleSubmit, formState, control, setValue } = useFormContext<DmpFormValues>()
+  const { getValues, handleSubmit, formState, control, setValue, reset } = useFormContext<DmpFormValues>()
   const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
   const { isValid, isSubmitted } = formState
   const updateMutation = useUpdateDmp()
@@ -49,7 +49,11 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
           setSaveState("saved")
           setTimeout(() => setSaveState("idle"), 2000)
           showSnackbar("DMPを保存しました", "success")
-          if (isNew) navigate(`/projects/${newProjectId}`)
+          if (isNew) {
+            navigate(`/projects/${newProjectId}`)
+          } else {
+            reset(formValues)
+          }
         },
         onError: () => {
           setSaveState("error")
