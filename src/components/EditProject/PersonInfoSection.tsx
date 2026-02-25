@@ -64,6 +64,12 @@ const formData: FormData[] = [
     required: true,
     type: "text",
   },
+  {
+    key: "contact",
+    label: "連絡先（メールアドレス）",
+    required: false,
+    type: "text",
+  },
 ]
 
 interface PersonInfoSectionProps {
@@ -167,7 +173,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
         <Table sx={{ minWidth: theme.breakpoints.values.md }}>
           <TableHead sx={{ backgroundColor: colors.grey[100] }}>
             <TableRow>
-              {["役割", "名前", "e-Rad 研究者番号", "ORCID", "所属機関", ""].map((header, index) => (
+              {["役割", "名前", "e-Rad 研究者番号", "ORCID", "所属機関", "連絡先", ""].map((header, index) => (
                 <TableCell
                   key={index}
                   children={header}
@@ -184,6 +190,7 @@ export default function PersonInfoSection({ sx }: PersonInfoSectionProps) {
                 <TableCell children={personInfo.eRadResearcherId ?? ""} sx={{ p: "0.5rem 1rem" }} />
                 <TableCell children={personInfo.orcid ?? ""} sx={{ p: "0.5rem 1rem" }} />
                 <TableCell children={personInfo.affiliation} sx={{ p: "0.5rem 1rem" }} />
+                <TableCell children={personInfo.contact ?? ""} sx={{ p: "0.5rem 1rem" }} />
                 <TableCell sx={{ display: "flex", flexDirection: "row", gap: "1rem", p: "0.5rem 1rem", justifyContent: "flex-end" }} align="right">
                   <Button
                     variant="outlined"
