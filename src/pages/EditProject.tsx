@@ -12,7 +12,6 @@ import { useParams } from "react-router-dom"
 
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
 import FormCard from "@/components/EditProject/FormCard"
-import GrdmCard from "@/components/EditProject/GrdmCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import { initDmp, DmpFormValues } from "@/dmp"
@@ -101,7 +100,6 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
           project={projectQuery.data}
           projects={projectsQuery.data!}
         />
-        <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data!} projects={projectsQuery.data!} />
         <ExportDmpCard sx={{ mt: "1.5rem" }} />
       </FormProvider>
 

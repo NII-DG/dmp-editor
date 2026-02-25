@@ -1,15 +1,27 @@
 import SaveOutlined from "@mui/icons-material/SaveOutlined"
-import { Box, Typography, Button, Divider, ToggleButton, ToggleButtonGroup } from "@mui/material"
+import {
+  Box,
+  Button,
+  Divider,
+  Step,
+  StepButton,
+  Stepper,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
-import { useFormContext, useWatch } from "react-hook-form"
+import { FieldPath, useFormContext, useWatch } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
 
 import DataInfoSection from "@/components/EditProject/DataInfoSection"
 import DmpMetadataSection from "@/components/EditProject/DmpMetadataSection"
+import FileTreeSection from "@/components/EditProject/FileTreeSection"
 import GrdmProject from "@/components/EditProject/GrdmProject"
 import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
+import ProjectTableSection from "@/components/EditProject/ProjectTableSection"
 import OurCard from "@/components/OurCard"
 import { DmpFormValues, researchPhases } from "@/dmp"
 import type { ResearchPhase } from "@/dmp"
@@ -28,15 +40,43 @@ export interface FormCardProps {
 
 type SaveState = "idle" | "saving" | "saved" | "error"
 
+const STEPS = [
+  { label: "基本設定" },
+  { label: "プロジェクト情報" },
+  { label: "担当者情報" },
+  { label: "研究データ情報" },
+  { label: "GRDM 連携" },
+] as const
+
+const STEP_FIELDS: Record<number, FieldPath<DmpFormValues>[]> = {
+  0: [
+    "grdmProjectName",
+    "dmp.metadata.revisionType",
+    "dmp.metadata.submissionDate",
+    "dmp.metadata.dateCreated",
+    "dmp.metadata.dateModified",
+  ],
+  1: [
+    "dmp.projectInfo.fundingAgency",
+    "dmp.projectInfo.projectCode",
+    "dmp.projectInfo.projectName",
+  ],
+  2: [], // PersonInfoSection: validated individually in dialog
+  3: [], // DataInfoSection: validated individually in dialog
+  4: [], // GRDM connection: no validation required
+}
+
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { getValues, handleSubmit, formState, control, setValue, reset } = useFormContext<DmpFormValues>()
+  const { getValues, handleSubmit, formState, control, setValue, reset, trigger } =
+    useFormContext<DmpFormValues>()
   const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
   const { isValid, isSubmitted } = formState
   const updateMutation = useUpdateDmp()
   const { showSnackbar } = useSnackbar()
   const [saveState, setSaveState] = useState<SaveState>("idle")
+  const [activeStep, setActiveStep] = useState(0)
 
   const onSubmit = async () => {
     const formValues = getValues()
@@ -64,12 +104,25 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
     )
   }
 
+  const handleNext = async () => {
+    const fields = STEP_FIELDS[activeStep]
+    const valid = fields.length > 0 ? await trigger(fields) : true
+    if (valid) {
+      setActiveStep((prev) => prev + 1)
+    }
+  }
+
+  const handleBack = () => {
+    setActiveStep((prev) => prev - 1)
+  }
+
   const buttonLabel = () => {
     if (saveState === "saving") return "保存中"
     if (saveState === "saved") return "保存しました"
     if (saveState === "error") return "保存に失敗"
     return "GRDM に保存する"
   }
+
   const isButtonDisabled = () => {
     if (saveState === "saving" || saveState === "saved" || saveState === "error") return true
     return isSubmitted && !isValid
@@ -77,57 +130,77 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
 
   return (
     <OurCard sx={sx}>
-      <Box
-        component="form"
-        onSubmit={handleSubmit(onSubmit)}
-      >
+      <Box component="form" onSubmit={handleSubmit(onSubmit)}>
         <Typography
           sx={{ fontSize: "1.5rem" }}
           component="h1"
           children={isNew ? "DMP Project の新規作成" : "DMP Project の編集"}
         />
-        <Box sx={{ mt: "1rem", display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem" }}>
-          <Typography sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>{"研究フェーズ:"}</Typography>
-          <ToggleButtonGroup
-            value={researchPhase}
-            exclusive
-            size="small"
-            onChange={(_, value: ResearchPhase | null) => {
-              if (value !== null) setValue("dmp.metadata.researchPhase", value)
-            }}
-          >
-            {researchPhases.map((phase) => (
-              <ToggleButton key={phase} value={phase} sx={{ textTransform: "none", px: "1.5rem" }}>
-                {phase}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+
+        <Stepper activeStep={activeStep} alternativeLabel nonLinear sx={{ mt: "1.5rem" }}>
+          {STEPS.map((step, i) => (
+            <Step key={step.label} completed={i < activeStep}>
+              <StepButton onClick={() => setActiveStep(i)}>{step.label}</StepButton>
+            </Step>
+          ))}
+        </Stepper>
+
+        <Box sx={{ mt: "2rem" }}>
+          {activeStep === 0 && (
+            <>
+              <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem" }}>
+                <Typography sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>{"研究フェーズ:"}</Typography>
+                <ToggleButtonGroup
+                  value={researchPhase}
+                  exclusive
+                  size="small"
+                  onChange={(_, value: ResearchPhase | null) => {
+                    if (value !== null) setValue("dmp.metadata.researchPhase", value)
+                  }}
+                >
+                  {researchPhases.map((phase) => (
+                    <ToggleButton key={phase} value={phase} sx={{ textTransform: "none", px: "1.5rem" }}>
+                      {phase}
+                    </ToggleButton>
+                  ))}
+                </ToggleButtonGroup>
+              </Box>
+              <GrdmProject sx={{ mt: "1rem" }} isNew={isNew} project={project} projects={projects} />
+              <DmpMetadataSection sx={{ mt: "1.5rem" }} />
+            </>
+          )}
+          {activeStep === 1 && <ProjectInfoSection />}
+          {activeStep === 2 && <PersonInfoSection />}
+          {activeStep === 3 && <DataInfoSection user={user} projects={projects} />}
+          {activeStep === 4 && (
+            <>
+              <ProjectTableSection user={user} projects={projects} />
+              <Divider sx={{ my: "1.5rem" }} />
+              <FileTreeSection projects={projects} />
+            </>
+          )}
         </Box>
-        <GrdmProject sx={{ mt: "1rem" }} isNew={isNew} project={project} projects={projects} />
-        <Divider sx={{ my: "1.5rem" }} />
-        <Box sx={{ display: "flex", flexDirection: "column" }}>
-          <DmpMetadataSection />
-          <Divider sx={{ my: "1.5rem" }} />
-          <ProjectInfoSection />
-          <Divider sx={{ my: "1.5rem" }} />
-          <PersonInfoSection />
-          <Divider sx={{ my: "1.5rem" }} />
-          <DataInfoSection user={user} projects={projects} />
-        </Box>
-        <Divider sx={{ my: "1.5rem" }} />
-        <Box sx={{ display: "flex", flexDirection: "row", mt: "1.5rem" }}>
+
+        <Box sx={{ display: "flex", flexDirection: "row", gap: "1rem", mt: "2rem", alignItems: "center" }}>
+          <Button variant="outlined" onClick={handleBack} disabled={activeStep === 0}>
+            前へ
+          </Button>
+          {activeStep < STEPS.length - 1 && (
+            <Button variant="contained" onClick={handleNext}>
+              次へ
+            </Button>
+          )}
+          <Box sx={{ flexGrow: 1 }} />
           <Button
             variant="contained"
             color="secondary"
             type="submit"
-            sx={{
-              textTransform: "none",
-              width: "180px",
-            }}
-            children={buttonLabel()}
-            disabled={isButtonDisabled()}
+            sx={{ textTransform: "none", width: "180px" }}
             startIcon={<SaveOutlined />}
-          />
+            disabled={isButtonDisabled()}
+          >
+            {buttonLabel()}
+          </Button>
         </Box>
       </Box>
     </OurCard>
