@@ -24,7 +24,13 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
   const projectQuery = useProjectInfo(projectId, isNew)
   const projectsQuery = useProjects()
 
-  const loading = dmpQuery.isLoading || userQuery.isLoading || projectQuery.isLoading || projectsQuery.isLoading
+  const loading =
+    dmpQuery.isLoading ||
+    userQuery.isLoading ||
+    projectQuery.isLoading ||
+    projectsQuery.isLoading ||
+    !userQuery.data ||
+    !projectsQuery.data
   const error = dmpQuery.error || userQuery.error || projectQuery.error || projectsQuery.error
 
   const methods = useForm<DmpFormValues>({

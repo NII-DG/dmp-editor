@@ -8,7 +8,7 @@ import LinkOffOutlined from "@mui/icons-material/LinkOffOutlined"
 import OpenInNew from "@mui/icons-material/OpenInNew"
 import { Autocomplete, Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, FormControl, Chip, TableContainer, Paper, Table, TableHead, TableCell, TableRow, TableBody, colors, Select, FormHelperText, Typography, Link } from "@mui/material"
 import { SxProps } from "@mui/system"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useFormContext, useFieldArray, Controller, useForm, useFormState, FormProvider, useWatch } from "react-hook-form"
 
 import HelpChip from "@/components/EditProject/HelpChip"
@@ -19,6 +19,7 @@ import type { DataInfo, DmpFormValues, ResearchPhase } from "@/dmp"
 import { formatDateToTimezone, ProjectInfo } from "@/grdmClient"
 import type { RorOrganization } from "@/hooks/useRorSearch"
 import { useRorSearch } from "@/hooks/useRorSearch"
+import { useSnackbar } from "@/hooks/useSnackbar"
 import { User } from "@/hooks/useUser"
 import theme from "@/theme"
 
@@ -313,7 +314,12 @@ interface DataManagementAgencyFieldProps {
 function DataManagementAgencyField({ label, required, helpChip }: DataManagementAgencyFieldProps) {
   const { control, setValue } = useFormContext<DataInfo>()
   const [searchQuery, setSearchQuery] = useState("")
-  const { results, isLoading } = useRorSearch(searchQuery)
+  const { results, isLoading, isError } = useRorSearch(searchQuery)
+  const { showSnackbar } = useSnackbar()
+
+  useEffect(() => {
+    if (isError) showSnackbar("情報の取得に失敗しました", "error")
+  }, [isError, showSnackbar])
 
   return (
     <Controller

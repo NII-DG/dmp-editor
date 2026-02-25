@@ -40,16 +40,18 @@ function extractDisplayName(names: RorApiOrganization["names"], preferredLang?: 
  * Custom hook for searching ROR (Research Organization Registry) organizations.
  * Uses the @hirakinii-packages/ror-api-typescript client with 300ms debounce.
  * @param query - Search query string (minimum 2 characters to trigger a search)
- * @returns Object with results array and isLoading boolean
+ * @returns Object with results array, isLoading boolean, and isError boolean
  */
-export function useRorSearch(query: string): { results: RorOrganization[]; isLoading: boolean } {
+export function useRorSearch(query: string): { results: RorOrganization[]; isLoading: boolean; isError: boolean } {
   const [results, setResults] = useState<RorOrganization[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isError, setIsError] = useState(false)
 
   useEffect(() => {
     if (query.length < MIN_QUERY_LENGTH) {
       setResults([])
       setIsLoading(false)
+      setIsError(false)
       return
     }
 
@@ -58,6 +60,7 @@ export function useRorSearch(query: string): { results: RorOrganization[]; isLoa
 
     const timer = setTimeout(async () => {
       setIsLoading(true)
+      setIsError(false)
       try {
         const orgs = await rorClient.searchOrganizations(query)
         if (!cancelled) {
@@ -67,6 +70,7 @@ export function useRorSearch(query: string): { results: RorOrganization[]; isLoa
         if (!cancelled) {
           console.error("ROR organization search failed:", error)
           setResults([])
+          setIsError(true)
         }
       } finally {
         if (!cancelled) {
@@ -80,5 +84,5 @@ export function useRorSearch(query: string): { results: RorOrganization[]; isLoa
       clearTimeout(timer)
     }
   }, [query])
-  return { results, isLoading }
+  return { results, isLoading, isError }
 }

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router"
 import { RecoilRoot } from "recoil"
 
 import AuthHelper from "@/components/AuthHelper"
+import SnackbarProvider from "@/components/SnackbarProvider"
 import EditProject from "@/pages/EditProject"
 import Home from "@/pages/Home"
 import StatusPage from "@/pages/StatusPage"
@@ -19,21 +20,23 @@ export default function App() {
         <CssBaseline />
         <RecoilRoot>
           <QueryClientProvider client={queryClient}>
-            <ErrorBoundary
-              fallbackRender={({ error, resetErrorBoundary }) => (
-                <StatusPage type="error" error={error} resetErrorBoundary={resetErrorBoundary} />
-              )}
-              onReset={() => window.location.reload()}
-            >
-              <AuthHelper>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/projects/new" element={<EditProject isNew />} />
-                  <Route path="/projects/:projectId" element={<EditProject />} />
-                  <Route path="*" element={<StatusPage type="notfound" />} />
-                </Routes>
-              </AuthHelper>
-            </ErrorBoundary>
+            <SnackbarProvider>
+              <ErrorBoundary
+                fallbackRender={({ error, resetErrorBoundary }) => (
+                  <StatusPage type="error" error={error} resetErrorBoundary={resetErrorBoundary} />
+                )}
+                onReset={() => window.location.reload()}
+              >
+                <AuthHelper>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/projects/new" element={<EditProject isNew />} />
+                    <Route path="/projects/:projectId" element={<EditProject />} />
+                    <Route path="*" element={<StatusPage type="notfound" />} />
+                  </Routes>
+                </AuthHelper>
+              </ErrorBoundary>
+            </SnackbarProvider>
           </QueryClientProvider>
         </RecoilRoot>
       </ThemeProvider>

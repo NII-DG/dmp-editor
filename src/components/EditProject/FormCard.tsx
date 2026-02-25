@@ -1,5 +1,5 @@
 import SaveOutlined from "@mui/icons-material/SaveOutlined"
-import { Box, Typography, Button, Divider, Alert, Snackbar, ToggleButton, ToggleButtonGroup } from "@mui/material"
+import { Box, Typography, Button, Divider, ToggleButton, ToggleButtonGroup } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
 import { useFormContext, useWatch } from "react-hook-form"
@@ -14,9 +14,9 @@ import OurCard from "@/components/OurCard"
 import { DmpFormValues, researchPhases } from "@/dmp"
 import type { ResearchPhase } from "@/dmp"
 import { ProjectInfo } from "@/grdmClient"
+import { useSnackbar } from "@/hooks/useSnackbar"
 import { useUpdateDmp } from "@/hooks/useUpdateDmp"
 import { User } from "@/hooks/useUser"
-import { getErrorChain } from "@/utils"
 
 export interface FormCardProps {
   sx?: SxProps
@@ -34,10 +34,8 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
   const { getValues, handleSubmit, formState, control, setValue } = useFormContext<DmpFormValues>()
   const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
   const { isValid, isSubmitted } = formState
-  const [alertMessage, setAlertMessage] = useState<string | null>(null)
-  const snackbarOpen = alertMessage !== null
   const updateMutation = useUpdateDmp()
-  // const [isMutating, setIsMutating] = useState(false)
+  const { showSnackbar } = useSnackbar()
   const [saveState, setSaveState] = useState<SaveState>("idle")
 
   const onSubmit = async () => {
@@ -50,19 +48,13 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
         onSuccess: (newProjectId: string) => {
           setSaveState("saved")
           setTimeout(() => setSaveState("idle"), 2000)
+          showSnackbar("DMPを保存しました", "success")
           if (isNew) navigate(`/projects/${newProjectId}`)
         },
-        onError: (error: unknown) => {
+        onError: () => {
           setSaveState("error")
           setTimeout(() => setSaveState("idle"), 2000)
-          const messages = getErrorChain(error).map((e) => e.message)
-          if (messages.some((msg) => msg.includes("HTTP Error: 403"))) {
-            setAlertMessage(
-              "GRDM Token に、プロジェクトを作成する権限 (\"osf.full_write\") が存在しないようです。ご確認よろしくお願いします。",
-            )
-          } else {
-            setAlertMessage(`DMP の更新に失敗しました: ${messages.join(", ")}`)
-          }
+          showSnackbar("保存に失敗しました", "error")
         },
       },
     )
@@ -134,15 +126,6 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
           />
         </Box>
       </Box>
-
-      <Snackbar
-        open={snackbarOpen}
-        onClose={() => setAlertMessage(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        autoHideDuration={10000}
-      >
-        <Alert onClose={() => setAlertMessage(null)} severity="error" sx={{ width: "100%" }} children={alertMessage} />
-      </Snackbar>
     </OurCard>
   )
 }

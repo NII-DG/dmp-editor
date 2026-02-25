@@ -9,13 +9,14 @@ import { RecoilRoot } from "recoil"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import DataInfoSection from "../../src/components/EditProject/DataInfoSection"
+import SnackbarProvider from "../../src/components/SnackbarProvider"
 import { initDmp } from "../../src/dmp"
 import type { DmpFormValues, ResearchPhase } from "../../src/dmp"
 import type { User } from "../../src/hooks/useUser"
 import { theme } from "../../src/theme"
 
 vi.mock("@/hooks/useRorSearch", () => ({
-  useRorSearch: () => ({ results: [], isLoading: false }),
+  useRorSearch: () => ({ results: [], isLoading: false, isError: false }),
 }))
 
 const mockUser: User = {
@@ -62,7 +63,9 @@ function renderWithProviders(ui: ReactElement) {
     <MemoryRouter>
       <ThemeProvider theme={theme}>
         <RecoilRoot>
-          <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+          <QueryClientProvider client={queryClient}>
+            <SnackbarProvider>{ui}</SnackbarProvider>
+          </QueryClientProvider>
         </RecoilRoot>
       </ThemeProvider>
     </MemoryRouter>,

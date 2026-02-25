@@ -1,5 +1,5 @@
 import SearchIcon from "@mui/icons-material/Search"
-import { Box, TextField, FormControl, MenuItem, Link, Button, CircularProgress, Alert, InputAdornment } from "@mui/material"
+import { Box, TextField, FormControl, MenuItem, Link, Button, CircularProgress, InputAdornment } from "@mui/material"
 import { SxProps } from "@mui/system"
 import React, { useState } from "react"
 import { useFormContext, Controller } from "react-hook-form"
@@ -9,6 +9,7 @@ import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import type { ProjectInfo, DmpFormValues } from "@/dmp"
 import { useKakenProject } from "@/hooks/useKakenProject"
+import { useSnackbar } from "@/hooks/useSnackbar"
 
 interface FormData {
   key: keyof ProjectInfo
@@ -113,7 +114,8 @@ interface ProjectInfoSectionProps {
 function KakenSearchPanel() {
   const { setValue } = useFormContext<DmpFormValues>()
   const [kakenNumber, setKakenNumber] = useState("")
-  const { refetch, isFetching, isError, error } = useKakenProject(kakenNumber)
+  const { refetch, isFetching } = useKakenProject(kakenNumber)
+  const { showSnackbar } = useSnackbar()
 
   const handleSearch = async () => {
     if (!kakenNumber.trim()) return
@@ -130,6 +132,8 @@ function KakenSearchPanel() {
       setValue("dmp.projectInfo.endYear", info.endYear)
     } else if (result.isSuccess && result.data === null) {
       // no projects found — keep existing values, show nothing
+    } else if (result.isError) {
+      showSnackbar("情報の取得に失敗しました", "error")
     }
   }
 
@@ -166,11 +170,6 @@ function KakenSearchPanel() {
           {isFetching ? "検索中..." : "検索"}
         </Button>
       </Box>
-      {isError && (
-        <Alert severity="error" sx={{ maxWidth: "480px" }}>
-          KAKEN API の検索に失敗しました: {error?.message ?? "不明なエラー"}
-        </Alert>
-      )}
     </Box>
   )
 }
