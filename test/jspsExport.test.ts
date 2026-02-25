@@ -1,9 +1,20 @@
+import * as fs from "fs"
+import * as path from "path"
 import { describe, it, expect } from "vitest"
 import * as XLSX from "xlsx"
 
 import type { Dmp } from "../src/dmp"
 import { initDmp, initDataInfo, initPersonInfo } from "../src/dmp"
-import { exportToJspsExcel, toCircledNumber, buildPersonRows, buildDataRows } from "../src/jspsExport"
+import { exportToJspsExcel, buildJspsWorkbook, toCircledNumber, buildPersonRows, buildDataRows } from "../src/jspsExport"
+
+const TEMPLATE_PATH = path.resolve(__dirname, "../src/templates/jsps_template.xlsx")
+
+/** Return a fresh ArrayBuffer of the template file on each call. */
+function readTemplateBuffer(): ArrayBuffer {
+  const buf = fs.readFileSync(TEMPLATE_PATH)
+  // Use Uint8Array to ensure compatibility with XLSX.read in jsdom environment
+  return new Uint8Array(buf).buffer
+}
 
 // Helper: read Blob as ArrayBuffer using FileReader (jsdom-compatible)
 function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
@@ -174,22 +185,22 @@ describe("buildDataRows", () => {
   })
 })
 
-describe("exportToJspsExcel", () => {
+describe("buildJspsWorkbook", () => {
   it("returns a Blob", () => {
     const dmp = initDmp()
-    const blob = exportToJspsExcel(dmp)
+    const blob = buildJspsWorkbook(readTemplateBuffer(), dmp)
     expect(blob).toBeInstanceOf(Blob)
   })
 
   it("Blob has xlsx MIME type", () => {
     const dmp = initDmp()
-    const blob = exportToJspsExcel(dmp)
+    const blob = buildJspsWorkbook(readTemplateBuffer(), dmp)
     expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
   })
 
   it("sheet name is DMP様式例", async () => {
     const dmp = initDmp()
-    const blob = exportToJspsExcel(dmp)
+    const blob = buildJspsWorkbook(readTemplateBuffer(), dmp)
     const buffer = await blobToArrayBuffer(blob)
     const wb = XLSX.read(buffer, { type: "array" })
     expect(wb.SheetNames).toContain("DMP様式例")
@@ -199,7 +210,7 @@ describe("exportToJspsExcel", () => {
     const dmp = initDmp()
     dmp.metadata.dateCreated = "2024-01-01"
     dmp.metadata.dateModified = "2024-06-01"
-    const rows = await parseSheet(exportToJspsExcel(dmp))
+    const rows = await parseSheet(buildJspsWorkbook(readTemplateBuffer(), dmp))
     // Row index 4 (0-based) = line 5 = DMP作成年月日
     expect(rows[4][2]).toBe("2024-01-01")
     // Row index 5 (0-based) = line 6 = DMP最終更新年月日
@@ -209,7 +220,7 @@ describe("exportToJspsExcel", () => {
   it("section 2: projectCode appears in correct row", async () => {
     const dmp = initDmp()
     dmp.projectInfo.projectCode = "JP12345678"
-    const rows = await parseSheet(exportToJspsExcel(dmp))
+    const rows = await parseSheet(buildJspsWorkbook(readTemplateBuffer(), dmp))
     // Row index 8 (0-based) = line 9 = 研究課題番号
     expect(rows[8][2]).toBe("JP12345678")
   })
@@ -220,15 +231,27 @@ describe("exportToJspsExcel", () => {
       ...initDataInfo(),
       dataName: `データ${i + 1}`,
     }))
-    const rows = await parseSheet(exportToJspsExcel(dmp))
+    const rows = await parseSheet(buildJspsWorkbook(readTemplateBuffer(), dmp))
     const dataNames = rows.map((r) => r[1]).filter((v) => String(v).startsWith("データ"))
     expect(dataNames.length).toBe(8)
   })
 
   it("generates Blob even for empty DMP", () => {
     const dmp = initDmp()
-    expect(() => exportToJspsExcel(dmp)).not.toThrow()
-    const blob = exportToJspsExcel(dmp)
+    const blob = buildJspsWorkbook(readTemplateBuffer(), dmp)
+    expect(blob).toBeInstanceOf(Blob)
     expect(blob.size).toBeGreaterThan(0)
+  })
+})
+
+describe("exportToJspsExcel", () => {
+  it("returns a Promise<Blob>", () => {
+    const dmp = initDmp()
+    // exportToJspsExcel is async - just verify it returns a Promise without resolving
+    // (full integration tested via buildJspsWorkbook above)
+    const result = exportToJspsExcel(dmp)
+    expect(result).toBeInstanceOf(Promise)
+    // Prevent unhandled rejection in test environment (fetch is not mocked here)
+    result.catch(Object)
   })
 })

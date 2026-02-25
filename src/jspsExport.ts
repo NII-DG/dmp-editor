@@ -2,6 +2,7 @@ import * as XLSX from "xlsx"
 
 import type { Dmp } from "@/dmp"
 import { personRole } from "@/dmp"
+import templateUrl from "@/templates/jsps_template.xlsx?url"
 
 /** Circled number characters ①–⑳ */
 const CIRCLED_NUMBERS = [
@@ -101,76 +102,58 @@ export function buildDataRows(dmp: Dmp): (string | number)[][] {
   })
 }
 
-/** Export DMP as JSPS-format Excel (single sheet: DMP様式例) */
-export function exportToJspsExcel(dmp: Dmp): Blob {
-  const empty: string[] = Array(14).fill("")
+/** Cell origin constants for the DMP様式例 template sheet (1-indexed Excel rows) */
+const TEMPLATE_CELLS = {
+  dateCreated: "C5",
+  dateModified: "C6",
+  projectCode: "C9",
+  /** Starting cell for person info rows (section 3) */
+  personRowsOrigin: "A13",
+  /** Starting cell for data info rows (section 4) */
+  dataRowsOrigin: "A22",
+} as const
 
-  const aoa: (string | number)[][] = [
-    // Row 1: title
-    ["科学研究費助成事業データマネジメントプラン（DMP）様式例", ...empty],
-    // Row 2: note 1
-    ["", "", "※研究の進捗に応じ、個別の研究データごとの記述を追記・更新すること※", ...empty],
-    // Row 3: note 2
-    ["", "", "※本様式例の項目の内容に沿っていれば、本様式以外を用いても差し支えない※", ...empty],
-    // Row 4: section 1 header
-    ["1. DMP作成・更新情報", ...empty],
-    // Row 5: dateCreated (C column = index 2)
-    ["", "DMP作成年月日", dmp.metadata.dateCreated, ...empty],
-    // Row 6: dateModified
-    ["", "DMP最終更新年月日", dmp.metadata.dateModified, ...empty],
-    // Row 7: empty
-    [...empty],
-    // Row 8: section 2 header
-    ["2. 研究課題情報", ...empty],
-    // Row 9: projectCode
-    ["", "研究課題番号", dmp.projectInfo.projectCode, ...empty],
-    // Row 10: empty
-    [...empty],
-    // Row 11: section 3 header
-    ["3. 担当者情報", ...empty],
-    // Row 12: section 3 column headers
-    [
-      "",
-      "",
-      "本計画書内通し番号",
-      "氏名",
-      "所属・役職",
-      "",
-      "研究者番号\n※該当がない場合は空欄可",
-      "連絡先",
-      ...empty,
-    ],
-    // Person rows (section 3)
-    ...buildPersonRows(dmp),
-    // Empty row before section 4
-    [...empty],
-    // Section 4 header
-    ["4. 研究データ情報", ...empty],
-    // Section 4 column headers
-    [
-      "No.",
-      "研究データの名称",
-      "研究データの概要",
-      "研究データの取得者又は収集者",
-      "研究データの管理者\n※取得者又は収集者と異なる場合のみ記入",
-      "機微情報がある場合の取り扱い方針",
-      "研究データの公開・提供方針",
-      "研究データの公開・提供方針詳細",
-      "研究データの公開・提供場所\n（URL、DOI）",
-      "研究データ公開日（予定日）",
-      ...empty,
-    ],
-    // Data rows (section 4)
-    ...buildDataRows(dmp),
-  ]
+/** Load the JSPS template as an ArrayBuffer via fetch */
+async function fetchTemplateBuffer(): Promise<ArrayBuffer> {
+  const res = await fetch(templateUrl)
+  return res.arrayBuffer()
+}
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa)
-  // const wb = XLSX.readFile(`../templates/jsps_template.xlsx`)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, "DMP様式例")
+/**
+ * Build a JSPS-format Excel workbook from the given template buffer and DMP data.
+ * Writes DMP data into the "DMP様式例" sheet of the template workbook.
+ */
+export function buildJspsWorkbook(templateBuffer: ArrayBuffer, dmp: Dmp): Blob {
+  const wb = XLSX.read(new Uint8Array(templateBuffer), { type: "array", cellStyles: true, cellDates: true })
+  const ws = wb.Sheets["DMP様式例"]
+
+  // Section 1: DMP creation/update dates
+  ws[TEMPLATE_CELLS.dateCreated] = { t: "s", v: dmp.metadata.dateCreated }
+  ws[TEMPLATE_CELLS.dateModified] = { t: "s", v: dmp.metadata.dateModified }
+
+  // Section 2: project code
+  ws[TEMPLATE_CELLS.projectCode] = { t: "s", v: dmp.projectInfo.projectCode }
+
+  // Section 3: person info rows
+  const personRows = buildPersonRows(dmp)
+  XLSX.utils.sheet_add_aoa(ws, personRows, { origin: TEMPLATE_CELLS.personRowsOrigin })
+
+  // Section 4: data info rows
+  const dataRows = buildDataRows(dmp)
+  XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: TEMPLATE_CELLS.dataRowsOrigin })
 
   const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" })
   return new Blob([excelBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   })
+}
+
+/**
+ * Export DMP as JSPS-format Excel using the bundled template.
+ * Fetches the template xlsx, writes DMP data into the "DMP様式例" sheet,
+ * and returns the result as a Blob.
+ */
+export async function exportToJspsExcel(dmp: Dmp): Promise<Blob> {
+  const templateBuffer = await fetchTemplateBuffer()
+  return buildJspsWorkbook(templateBuffer, dmp)
 }

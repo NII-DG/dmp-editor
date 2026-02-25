@@ -37,7 +37,7 @@ export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
     setIsDownloading(true)
     try {
       const dmp = getValues().dmp
-      const blob = format === "jsps" ? exportToJspsExcel(dmp) : exportToExcel(dmp)
+      const blob = format === "jsps" ? await exportToJspsExcel(dmp) : exportToExcel(dmp)
       const filename = format === "jsps" ? "jsps_dmp.xlsx" : "dmp.xlsx"
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
