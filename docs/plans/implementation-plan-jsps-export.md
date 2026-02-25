@@ -159,7 +159,7 @@ Excel ファイルをエクスポートする機能を追加する。
 
 ## 詳細実装仕様
 
-### Step 1: `src/dmp.ts` の変更
+### Step 1: `src/dmp.ts` の変更　→　完了
 
 #### `personInfoSchema` に `contact` を追加
 
@@ -206,7 +206,7 @@ personInfoData.push([
 ])
 ```
 
-### Step 2: `src/components/EditProject/PersonInfoSection.tsx` の変更
+### Step 2: `src/components/EditProject/PersonInfoSection.tsx` の変更　→　完了
 
 #### `formData` 配列に連絡先を追加
 
@@ -230,7 +230,7 @@ personInfoData.push([
 
 `TableCell` に `personInfo.contact ?? ""` の列を追加する。
 
-### Step 3: `src/jspsExport.ts` の新規作成
+### Step 3: `src/jspsExport.ts` の新規作成　→　完了
 
 ```typescript
 import * as XLSX from "xlsx"
@@ -403,7 +403,7 @@ async function parseSheet(blob: Blob): Promise<string[][]> {
 
 ### Step 5: `src/components/EditProject/ExportDmpCard.tsx` の変更
 
-JSPS 形式エクスポートボタンを追加する。
+エクスポートボタンをクリックしたときに、プルダウン形式で「サンプル形式」と「JSPS 形式」を選択できるように、エクスポートボタンを修正する。
 
 ### Step 6: 全体確認
 

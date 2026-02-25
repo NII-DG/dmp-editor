@@ -36,7 +36,7 @@ const formData: FormData[] = [
   },
   {
     key: "lastName",
-    label: "性",
+    label: "姓",
     required: true,
     type: "text",
   },
