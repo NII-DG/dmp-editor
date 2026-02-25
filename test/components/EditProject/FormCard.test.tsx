@@ -16,6 +16,13 @@ import type { ProjectInfo } from "../../../src/grdmClient"
 import type { User } from "../../../src/hooks/useUser"
 import { theme } from "../../../src/theme"
 
+// Hoist mocks so they are accessible in vi.mock factories
+const { mockNavigate, mockMutate } = vi.hoisted(() => {
+  const mockNavigate = vi.fn()
+  const mockMutate = vi.fn()
+  return { mockNavigate, mockMutate }
+})
+
 // Mock heavy subcomponents to keep tests focused
 vi.mock("../../../src/components/EditProject/GrdmProject", () => ({
   default: () => <div data-testid="grdm-project">GrdmProject</div>,
@@ -39,13 +46,13 @@ vi.mock("../../../src/components/EditProject/FileTreeSection", () => ({
   default: () => <div data-testid="file-tree-section">FileTreeSection</div>,
 }))
 vi.mock("../../../src/hooks/useUpdateDmp", () => ({
-  useUpdateDmp: () => ({ mutate: vi.fn() }),
+  useUpdateDmp: () => ({ mutate: mockMutate }),
 }))
 vi.mock("react-router-dom", async (importOriginal) => {
   const mod = await importOriginal<typeof import("react-router-dom")>()
   return {
     ...mod,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
     useParams: () => ({ projectId: "test-project-id" }),
   }
 })
@@ -290,6 +297,72 @@ describe("FormCard with Stepper", () => {
     it("shows 編集 when isNew=false", () => {
       renderWithProviders(<FormCardWrapper isNew={false} />)
       expect(screen.getByText("DMP Project の編集")).toBeInTheDocument()
+    })
+  })
+
+  describe("save and navigate on last step (GRDM 連携)", () => {
+    it("navigates to detail page after successful save on last step (existing project)", async () => {
+      const user = userEvent.setup()
+      // Simulate mutate calling onSuccess
+      mockMutate.mockImplementation((_args: unknown, { onSuccess }: { onSuccess: (id: string) => void }) => {
+        onSuccess("test-project-id")
+      })
+
+      renderWithProviders(<FormCardWrapper isNew={false} />)
+
+      // Jump to last step
+      await user.click(screen.getByText("GRDM 連携"))
+      await waitFor(() => {
+        expect(screen.getByTestId("project-table-section")).toBeInTheDocument()
+      })
+
+      // Click save
+      await user.click(screen.getByRole("button", { name: /GRDM に保存する/ }))
+
+      // Should navigate to detail page without requiring modal interaction
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith("/projects/test-project-id/detail")
+      })
+    })
+
+    it("navigates to detail page after successful save on last step (new project)", async () => {
+      const user = userEvent.setup()
+      mockMutate.mockImplementation((_args: unknown, { onSuccess }: { onSuccess: (id: string) => void }) => {
+        onSuccess("new-project-id")
+      })
+
+      renderWithProviders(<FormCardWrapper isNew />)
+
+      // Jump to last step
+      await user.click(screen.getByText("GRDM 連携"))
+      await waitFor(() => {
+        expect(screen.getByTestId("project-table-section")).toBeInTheDocument()
+      })
+
+      // Click save
+      await user.click(screen.getByRole("button", { name: /GRDM に保存する/ }))
+
+      // Should navigate to the new project's detail page
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith("/projects/new-project-id/detail")
+      })
+    })
+
+    it("does NOT navigate after save on non-last step (existing project)", async () => {
+      const user = userEvent.setup()
+      mockMutate.mockImplementation((_args: unknown, { onSuccess }: { onSuccess: (id: string) => void }) => {
+        onSuccess("test-project-id")
+      })
+
+      renderWithProviders(<FormCardWrapper isNew={false} />)
+
+      // Stay on step 1 (not last step) and click save
+      await user.click(screen.getByRole("button", { name: /GRDM に保存する/ }))
+
+      // Should NOT navigate for existing project on non-last step
+      await waitFor(() => {
+        expect(mockNavigate).not.toHaveBeenCalled()
+      })
     })
   })
 })
