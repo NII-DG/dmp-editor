@@ -6,7 +6,7 @@ import {
   DialogContentText,
   DialogTitle,
 } from "@mui/material"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
@@ -33,13 +33,23 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
   const projectQuery = useProjectInfo(projectId, isNew)
   const projectsQuery = useProjects()
 
-  const loading =
-    dmpQuery.isLoading ||
-    userQuery.isLoading ||
-    projectQuery.isLoading ||
-    projectsQuery.isLoading ||
-    !userQuery.data ||
-    !projectsQuery.data
+  const [formInitialized, setFormInitialized] = useState(false)
+  const [minDelayComplete, setMinDelayComplete] = useState(false)
+
+  useEffect(() => {
+    if (!isNew) return
+    const timer = setTimeout(() => setMinDelayComplete(true), 500)
+    return () => clearTimeout(timer)
+  }, [isNew])
+
+  const loading = isNew
+    ? !formInitialized || !minDelayComplete || userQuery.isLoading || projectsQuery.isLoading
+    : dmpQuery.isLoading ||
+      userQuery.isLoading ||
+      projectQuery.isLoading ||
+      projectsQuery.isLoading ||
+      !userQuery.data ||
+      !projectsQuery.data
   const error = dmpQuery.error || userQuery.error || projectQuery.error || projectsQuery.error
 
   const methods = useForm<DmpFormValues>({
@@ -51,16 +61,23 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
     reValidateMode: "onBlur",
   })
 
-  // Initialize default values based on the fetched data
+  // Initialize form values based on fetched data
   useEffect(() => {
-    if (dmpQuery.data && userQuery.data && projectQuery.data) {
-      const defaultValues = {
-        grdmProjectName: projectQuery.data?.title ?? "",
-        dmp: isNew ? initDmp(userQuery.data) : dmpQuery.data,
+    if (isNew) {
+      if (userQuery.data && projectsQuery.data) {
+        methods.reset({
+          grdmProjectName: "",
+          dmp: initDmp(userQuery.data),
+        })
+        setFormInitialized(true)
       }
-      methods.reset(defaultValues)
+    } else if (dmpQuery.data && userQuery.data && projectQuery.data) {
+      methods.reset({
+        grdmProjectName: projectQuery.data.title ?? "",
+        dmp: dmpQuery.data,
+      })
     }
-  }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data])
+  }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data, projectsQuery.data])
 
   const blocker = useUnsavedChangesWarning(methods.formState.isDirty)
 
