@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@mui/material"
 import { SxProps } from "@mui/system"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { FieldPath, useFormContext, useWatch } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -72,21 +72,11 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
   const { getValues, handleSubmit, formState, control, setValue, reset, trigger } =
     useFormContext<DmpFormValues>()
   const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
-  const { isValid, isSubmitted, isDirty } = formState
+  const { isValid, isSubmitted } = formState
   const updateMutation = useUpdateDmp()
   const { showSnackbar } = useSnackbar()
   const [saveState, setSaveState] = useState<SaveState>("idle")
   const [activeStep, setActiveStep] = useState(0)
-  // Stores the URL to navigate to after isDirty is cleared by reset()
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
-
-  // Navigate only after the form is clean (isDirty = false) to prevent useBlocker from firing
-  useEffect(() => {
-    if (pendingNavigation !== null && !isDirty) {
-      navigate(pendingNavigation)
-      setPendingNavigation(null)
-    }
-  }, [pendingNavigation, isDirty, navigate])
 
   const onSubmit = async () => {
     const formValues = getValues()
@@ -99,15 +89,17 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
           setSaveState("saved")
           setTimeout(() => setSaveState("idle"), 2000)
           showSnackbar("DMPを保存しました", "success")
-          // Always reset first to clear isDirty, then navigate via effect
+          // reset() updates the RHF live store (isDirty = false) synchronously.
+          // The useBlocker in EditProject reads from the live store via a stable
+          // ref function, so navigate() called right after is not blocked.
           reset(formValues)
           const targetProjectId = isNew ? newProjectId : projectId
           if (activeStep === STEPS.length - 1) {
             // Last step: navigate to detail page for both new and existing projects
-            setPendingNavigation(`/projects/${targetProjectId}/detail`)
+            navigate(`/projects/${targetProjectId}/detail`)
           } else if (isNew) {
             // Other steps with a new project: navigate to the edit page
-            setPendingNavigation(`/projects/${newProjectId}`)
+            navigate(`/projects/${newProjectId}`)
           }
         },
         onError: () => {

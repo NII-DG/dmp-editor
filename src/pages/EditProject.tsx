@@ -6,7 +6,7 @@ import {
   DialogContentText,
   DialogTitle,
 } from "@mui/material"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
@@ -78,7 +78,13 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
     }
   }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data, projectsQuery.data])
 
-  const blocker = useUnsavedChangesWarning(methods.formState.isDirty)
+  // Stable function that reads from the RHF live store at navigation time.
+  // Required to avoid a false block caused by React's effect ordering:
+  // useBlocker registers via useEffect (parent fires after child), so a child
+  // calling navigate() after reset() would be blocked by a stale blocker unless
+  // we read formState.isDirty directly from the live store here.
+  const checkIsDirty = useRef(() => methods.formState.isDirty).current
+  const blocker = useUnsavedChangesWarning(methods.formState.isDirty, checkIsDirty)
 
   if (loading) {
     return (
