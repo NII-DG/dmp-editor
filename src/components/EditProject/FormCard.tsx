@@ -6,25 +6,21 @@ import {
   Step,
   StepButton,
   Stepper,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
-import { FieldPath, useFormContext, useWatch } from "react-hook-form"
+import { FieldPath, useFormContext } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
 
 import DataInfoSection from "@/components/EditProject/DataInfoSection"
-import DmpMetadataSection from "@/components/EditProject/DmpMetadataSection"
+import DmpMetaSection from "@/components/EditProject/DmpMetaSection"
 import FileTreeSection from "@/components/EditProject/FileTreeSection"
-import GrdmProject from "@/components/EditProject/GrdmProject"
 import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
 import ProjectTableSection from "@/components/EditProject/ProjectTableSection"
 import OurCard from "@/components/OurCard"
-import { DmpFormValues, researchPhases } from "@/dmp"
-import type { ResearchPhase } from "@/dmp"
+import { DmpFormValues } from "@/dmp"
 import { ProjectInfo } from "@/grdmClient"
 import { useSnackbar } from "@/hooks/useSnackbar"
 import { useUpdateDmp } from "@/hooks/useUpdateDmp"
@@ -69,9 +65,7 @@ const STEP_FIELDS: Record<number, FieldPath<DmpFormValues>[]> = {
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { getValues, handleSubmit, formState, control, setValue, reset, trigger } =
-    useFormContext<DmpFormValues>()
-  const researchPhase = useWatch({ control, name: "dmp.metadata.researchPhase" }) as ResearchPhase
+  const { getValues, handleSubmit, formState, reset, trigger } = useFormContext<DmpFormValues>()
   const { isValid, isSubmitted } = formState
   const updateMutation = useUpdateDmp()
   const { showSnackbar } = useSnackbar()
@@ -154,27 +148,7 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
 
         <Box sx={{ mt: "2rem" }}>
           {activeStep === 0 && (
-            <>
-              <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem" }}>
-                <Typography sx={{ fontSize: "0.9rem", fontWeight: "bold" }}>{"研究フェーズ:"}</Typography>
-                <ToggleButtonGroup
-                  value={researchPhase}
-                  exclusive
-                  size="small"
-                  onChange={(_, value: ResearchPhase | null) => {
-                    if (value !== null) setValue("dmp.metadata.researchPhase", value)
-                  }}
-                >
-                  {researchPhases.map((phase) => (
-                    <ToggleButton key={phase} value={phase} sx={{ textTransform: "none", px: "1.5rem" }}>
-                      {phase}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-              </Box>
-              <GrdmProject sx={{ mt: "1rem" }} isNew={isNew} project={project} projects={projects} />
-              <DmpMetadataSection sx={{ mt: "1.5rem" }} />
-            </>
+            <DmpMetaSection isNew={isNew} project={project} projects={projects} />
           )}
           {activeStep === 1 && <ProjectInfoSection />}
           {activeStep === 2 && <PersonInfoSection />}

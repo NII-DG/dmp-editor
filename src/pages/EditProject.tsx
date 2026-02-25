@@ -79,11 +79,12 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
   }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data, projectsQuery.data])
 
   // Stable function that reads from the RHF live store at navigation time.
-  // Required to avoid a false block caused by React's effect ordering:
-  // useBlocker registers via useEffect (parent fires after child), so a child
-  // calling navigate() after reset() would be blocked by a stale blocker unless
-  // we read formState.isDirty directly from the live store here.
-  const checkIsDirty = useRef(() => methods.formState.isDirty).current
+  // methods.formState.isDirty reads from a React-state-backed proxy, which is
+  // still stale (true) immediately after reset() because React batches the
+  // setState call asynchronously. methods.control._formState is the module-level
+  // variable updated synchronously by _setFormState() inside reset(), so it
+  // already reflects isDirty=false when navigate() is called right after reset().
+  const checkIsDirty = useRef(() => methods.control._formState.isDirty).current
   const blocker = useUnsavedChangesWarning(methods.formState.isDirty, checkIsDirty)
 
   if (loading) {
