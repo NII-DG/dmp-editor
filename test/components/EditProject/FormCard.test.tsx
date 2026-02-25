@@ -153,8 +153,8 @@ describe("FormCard with Stepper", () => {
       expect(screen.getByRole("button", { name: "次へ" })).toBeInTheDocument()
     })
 
-    it("renders save button at step 1", () => {
-      renderWithProviders(<FormCardWrapper />)
+    it("renders save button at step 1 (existing project)", () => {
+      renderWithProviders(<FormCardWrapper isNew={false} />)
       expect(screen.getByRole("button", { name: /GRDM に保存する/ })).toBeInTheDocument()
     })
   })
@@ -258,20 +258,50 @@ describe("FormCard with Stepper", () => {
   })
 
   describe("save button visibility across all steps", () => {
-    const stepLabels = ["基本設定", "プロジェクト情報", "担当者情報", "研究データ情報", "GRDM 連携"]
+    describe("existing project (isNew=false): save button shown on every step", () => {
+      const stepLabels = ["基本設定", "プロジェクト情報", "担当者情報", "研究データ情報", "GRDM 連携"]
 
-    for (const label of stepLabels) {
-      it(`shows save button on step: ${label}`, async () => {
+      for (const label of stepLabels) {
+        it(`shows save button on step: ${label}`, async () => {
+          const user = userEvent.setup()
+          renderWithProviders(<FormCardWrapper isNew={false} />)
+
+          await user.click(screen.getByText(label))
+
+          await waitFor(() => {
+            expect(screen.getByRole("button", { name: /GRDM に保存する/ })).toBeInTheDocument()
+          })
+        })
+      }
+    })
+
+    describe("new project (isNew=true): save button shown only on last step", () => {
+      const nonLastSteps = ["基本設定", "プロジェクト情報", "担当者情報", "研究データ情報"]
+
+      for (const label of nonLastSteps) {
+        it(`hides save button on step: ${label}`, async () => {
+          const user = userEvent.setup()
+          renderWithProviders(<FormCardWrapper isNew />)
+
+          await user.click(screen.getByText(label))
+
+          await waitFor(() => {
+            expect(screen.queryByRole("button", { name: /GRDM に保存する/ })).not.toBeInTheDocument()
+          })
+        })
+      }
+
+      it("shows save button on last step: GRDM 連携", async () => {
         const user = userEvent.setup()
-        renderWithProviders(<FormCardWrapper />)
+        renderWithProviders(<FormCardWrapper isNew />)
 
-        await user.click(screen.getByText(label))
+        await user.click(screen.getByText("GRDM 連携"))
 
         await waitFor(() => {
           expect(screen.getByRole("button", { name: /GRDM に保存する/ })).toBeInTheDocument()
         })
       })
-    }
+    })
   })
 
   describe("step 5 GRDM content", () => {

@@ -206,16 +206,18 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
             </Button>
           )}
           <Box sx={{ flexGrow: 1 }} />
-          <Button
-            variant="contained"
-            color="secondary"
-            type="submit"
-            sx={{ textTransform: "none", width: "180px" }}
-            startIcon={<SaveOutlined />}
-            disabled={isButtonDisabled()}
-          >
-            {buttonLabel()}
-          </Button>
+          {(!isNew || activeStep === STEPS.length - 1) && (
+            <Button
+              variant="contained"
+              color="secondary"
+              type="submit"
+              sx={{ textTransform: "none", width: "180px" }}
+              startIcon={<SaveOutlined />}
+              disabled={isButtonDisabled()}
+            >
+              {buttonLabel()}
+            </Button>
+          )}
         </Box>
       </Box>
     </OurCard>
