@@ -53,18 +53,18 @@ describe("useRorSearch", () => {
     expect(mockSearchOrganizations).not.toHaveBeenCalled()
   })
 
-  it("calls searchOrganizations after 300ms debounce", () => {
+  it("calls searchOrganizations after 300ms debounce", async () => {
     mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     renderHook(() => useRorSearch("Tokyo"))
-    act(() => { vi.advanceTimersByTime(300) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
     expect(mockSearchOrganizations).toHaveBeenCalledOnce()
     expect(mockSearchOrganizations).toHaveBeenCalledWith("Tokyo")
   })
 
-  it("passes the query as-is including Japanese characters", () => {
+  it("passes the query as-is including Japanese characters", async () => {
     mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     renderHook(() => useRorSearch("東京大学"))
-    act(() => { vi.advanceTimersByTime(300) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(300) })
     expect(mockSearchOrganizations).toHaveBeenCalledWith("東京大学")
   })
 
@@ -172,7 +172,7 @@ describe("useRorSearch", () => {
     expect(result.current.results).toEqual([])
   })
 
-  it("cancels previous debounce when query changes before it fires", () => {
+  it("cancels previous debounce when query changes before it fires", async () => {
     mockSearchOrganizations.mockResolvedValue(mockRorOrgs)
     const { rerender } = renderHook(({ q }) => useRorSearch(q), {
       initialProps: { q: "Tokyo" },
@@ -185,7 +185,7 @@ describe("useRorSearch", () => {
     act(() => { vi.advanceTimersByTime(200) })
     expect(mockSearchOrganizations).not.toHaveBeenCalled()
     // Advance 100ms more (300ms since Kyoto - debounce fires)
-    act(() => { vi.advanceTimersByTime(100) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(100) })
     expect(mockSearchOrganizations).toHaveBeenCalledOnce()
     expect(mockSearchOrganizations).toHaveBeenCalledWith("Kyoto")
   })
