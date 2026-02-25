@@ -165,6 +165,7 @@ export function exportToJspsExcel(dmp: Dmp): Blob {
   ]
 
   const ws = XLSX.utils.aoa_to_sheet(aoa)
+  // const wb = XLSX.readFile(`../templates/jsps_template.xlsx`)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "DMP様式例")
 

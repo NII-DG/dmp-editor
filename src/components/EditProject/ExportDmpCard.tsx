@@ -31,8 +31,8 @@ export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
   }
 
   const handleDownload = async (format: "sample" | "jsps") => {
-    handleCloseMenu()
     const valid = await trigger()
+    handleCloseMenu()
     if (!valid) return
     setIsDownloading(true)
     try {
