@@ -7,6 +7,7 @@ import { RecoilRoot } from "recoil"
 
 import AuthHelper from "@/components/AuthHelper"
 import SnackbarProvider from "@/components/SnackbarProvider"
+import DetailProject from "@/pages/DetailProject"
 import EditProject from "@/pages/EditProject"
 import Home from "@/pages/Home"
 import StatusPage from "@/pages/StatusPage"
@@ -36,6 +37,7 @@ const router = createBrowserRouter(
       children: [
         { index: true, element: <Home /> },
         { path: "projects/new", element: <EditProject isNew /> },
+        { path: "projects/:projectId/detail", element: <DetailProject /> },
         { path: "projects/:projectId", element: <EditProject /> },
         { path: "*", element: <StatusPage type="notfound" /> },
       ],

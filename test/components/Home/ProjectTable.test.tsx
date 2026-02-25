@@ -119,6 +119,7 @@ describe("ProjectTable", () => {
       revokeObjectURL: vi.fn(),
     })
     // Suppress jsdom "Not implemented: navigation" warning from <a>.click()
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
   })
 

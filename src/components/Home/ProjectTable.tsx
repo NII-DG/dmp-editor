@@ -1,5 +1,6 @@
 import DownloadingOutlined from "@mui/icons-material/DownloadingOutlined"
 import EditOutlined from "@mui/icons-material/EditOutlined"
+import InfoOutlined from "@mui/icons-material/InfoOutlined"
 import OpenInNew from "@mui/icons-material/OpenInNew"
 import {
   Box,
@@ -129,6 +130,15 @@ function ProjectTableRow({ project, user }: { project: ProjectInfo; user: User }
       </TableCell>
       <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "35%" }}>
         <Box sx={{ display: "inline-flex", gap: "0.5rem", alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            color="info"
+            size="small"
+            onClick={() => navigate(`/projects/${project.id}/detail`)}
+            startIcon={<InfoOutlined />}
+          >
+            {"詳細"}
+          </Button>
           <Button
             variant="outlined"
             color="primary"
