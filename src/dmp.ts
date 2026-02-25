@@ -41,6 +41,7 @@ export const personInfoSchema = z.object({
   eRadResearcherId: z.string().nullable().optional(), // e-Rad研究者番号
   orcid: z.string().nullable().optional(), // ORCID
   affiliation: z.string(), // 所属機関
+  contact: z.string().nullable().optional(), // email address
 })
 export type PersonInfo = z.infer<typeof personInfoSchema>
 
@@ -174,6 +175,7 @@ export const initPersonInfo = (): PersonInfo => {
     eRadResearcherId: undefined,
     orcid: undefined,
     affiliation: "",
+    contact: undefined,
   }
 }
 
@@ -238,7 +240,7 @@ export const exportToExcel = (dmp: Dmp): Blob => {
   XLSX.utils.book_append_sheet(workbook, projectInfoSheet, "プロジェクト情報")
 
   // 担当者情報
-  const personInfoHeader = ["", "本計画書内通し番号", "姓", "名", "e-Rad 研究者番号", "ORCID", "所属機関"]
+  const personInfoHeader = ["", "本計画書内通し番号", "姓", "名", "e-Rad 研究者番号", "ORCID", "所属機関", "連絡先"]
   const personInfoData = []
   for (const role of personRole) {
     for (const person of dmp.personInfo) {
@@ -251,6 +253,7 @@ export const exportToExcel = (dmp: Dmp): Blob => {
           person.eRadResearcherId ?? "",
           person.orcid ?? "",
           person.affiliation,
+          person.contact ?? "",
         ])
       }
     }
