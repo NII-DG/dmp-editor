@@ -65,7 +65,7 @@ const STEP_FIELDS: Record<number, FieldPath<DmpFormValues>[]> = {
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { getValues, handleSubmit, formState, reset, trigger } = useFormContext<DmpFormValues>()
+  const { getValues, handleSubmit, formState, reset, trigger, setError } = useFormContext<DmpFormValues>()
   const { isValid, isSubmitted } = formState
   const updateMutation = useUpdateDmp()
   const { showSnackbar } = useSnackbar()
@@ -73,6 +73,14 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
   const [activeStep, setActiveStep] = useState(0)
 
   const onSubmit = async () => {
+    // grdmProjectName Controller is only mounted at Step 0, so handleSubmit does not
+    // validate it when saving from another step. Validate manually before proceeding.
+    if (isNew && !getValues("grdmProjectName")?.trim()) {
+      setError("grdmProjectName", { type: "required", message: "プロジェクト名は必須です" })
+      setActiveStep(0)
+      return
+    }
+
     const formValues = getValues()
     setSaveState("saving")
 

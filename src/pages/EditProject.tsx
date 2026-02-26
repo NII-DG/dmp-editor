@@ -63,7 +63,9 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
   // Initialize form values based on fetched data
   useEffect(() => {
     if (isNew) {
-      if (userQuery.data && projectsQuery.data) {
+      // Guard with !formInitialized to prevent re-initialization on query refetch,
+      // which would overwrite user-entered form values like grdmProjectName.
+      if (!formInitialized && userQuery.data && projectsQuery.data) {
         methods.reset({
           grdmProjectName: "",
           dmp: initDmp(userQuery.data),
@@ -76,7 +78,7 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
         dmp: dmpQuery.data,
       })
     }
-  }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data, projectsQuery.data])
+  }, [formInitialized, isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data, projectsQuery.data])
 
   // Stable function that reads from the RHF live store at navigation time.
   // methods.formState.isDirty reads from a React-state-backed proxy, which is
