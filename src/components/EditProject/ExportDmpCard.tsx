@@ -7,8 +7,8 @@ import { useErrorBoundary } from "react-error-boundary"
 import { useFormContext } from "react-hook-form"
 
 import OurCard from "@/components/OurCard"
-import { exportToExcel } from "@/dmp"
 import type { DmpFormValues } from "@/dmp"
+import { exportToExcel } from "@/excelExport"
 import { exportToJspsExcel } from "@/jspsExport"
 
 export interface ExportDmpCardProps {
@@ -37,7 +37,7 @@ export default function ExportDmpCard({ sx }: ExportDmpCardProps) {
     setIsDownloading(true)
     try {
       const dmp = getValues().dmp
-      const blob = format === "jsps" ? await exportToJspsExcel(dmp) : exportToExcel(dmp)
+      const blob = format === "jsps" ? await exportToJspsExcel(dmp) : await exportToExcel(dmp)
       const filename = format === "jsps" ? "jsps_dmp.xlsx" : "dmp.xlsx"
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")

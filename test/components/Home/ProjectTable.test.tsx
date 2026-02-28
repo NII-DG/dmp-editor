@@ -41,13 +41,9 @@ vi.mock("@/jspsExport", () => ({
   exportToJspsExcel: mockExportToJspsExcel,
 }))
 
-vi.mock("@/dmp", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/dmp")>()
-  return {
-    ...original,
-    exportToExcel: mockExportToExcel,
-  }
-})
+vi.mock("@/excelExport", () => ({
+  exportToExcel: mockExportToExcel,
+}))
 
 // --- Test data ---
 

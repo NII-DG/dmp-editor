@@ -14,6 +14,23 @@ export default defineConfig({
   },
   build: {
     outDir: "../dist",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-error-boundary", "react-hook-form"],
+          "vendor-router": ["react-router", "react-router-dom"],
+          "vendor-mui": [
+            "@mui/material",
+            "@mui/icons-material",
+            "@mui/x-tree-view",
+            "@emotion/react",
+            "@emotion/styled",
+          ],
+          "vendor-query": ["@tanstack/react-query", "@tanstack/react-query-devtools"],
+          "vendor-state": ["recoil"],
+        },
+      },
+    },
   },
   server: {
     host: process.env.DMP_EDITOR_HOST || "0.0.0.0",

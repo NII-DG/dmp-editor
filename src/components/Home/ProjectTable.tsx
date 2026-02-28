@@ -25,7 +25,7 @@ import { useNavigate } from "react-router"
 import { useRecoilValue } from "recoil"
 
 import OurCard from "@/components/OurCard"
-import { exportToExcel } from "@/dmp"
+import { exportToExcel } from "@/excelExport"
 import { DMP_PROJECT_PREFIX, ProjectInfo, formatDateToTimezone, readDmpFile } from "@/grdmClient"
 import { useSnackbar } from "@/hooks/useSnackbar"
 import { User } from "@/hooks/useUser"
@@ -99,7 +99,7 @@ function ProjectTableRow({ project, user }: { project: ProjectInfo; user: User }
         const blob = await exportToJspsExcel(dmp)
         triggerDownload(blob, `${project.title}_jsps.xlsx`)
       } else {
-        const blob = exportToExcel(dmp)
+        const blob = await exportToExcel(dmp)
         triggerDownload(blob, `${project.title}_sample.xlsx`)
       }
     } catch {
