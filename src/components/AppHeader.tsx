@@ -6,11 +6,13 @@ import LogoutOutlined from "@mui/icons-material/LogoutOutlined"
 import OpenInNew from "@mui/icons-material/OpenInNew"
 import { AppBar, Box, Link, Button, Menu, MenuItem, colors } from "@mui/material"
 import { SxProps } from "@mui/system"
+import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useErrorBoundary } from "react-error-boundary"
 import { useNavigate } from "react-router-dom"
 import { useRecoilState } from "recoil"
 
+import { useSnackbar } from "@/hooks/useSnackbar"
 import { useUser } from "@/hooks/useUser"
 import { tokenAtom } from "@/store/token"
 import { headerColor } from "@/theme"
@@ -22,6 +24,7 @@ interface AppHeaderProps {
 
 export default function AppHeader({ sx, noAuth }: AppHeaderProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { showBoundary } = useErrorBoundary()
   const userQuery = useUser()
   if (userQuery.isError && userQuery.error) {
@@ -31,6 +34,7 @@ export default function AppHeader({ sx, noAuth }: AppHeaderProps) {
   const [token, setToken] = useRecoilState(tokenAtom)
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null)
   const [copied, setCopied] = useState(false)
+  const { showSnackbar } = useSnackbar()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(token).then(() => {
@@ -40,7 +44,10 @@ export default function AppHeader({ sx, noAuth }: AppHeaderProps) {
   }
 
   const signOut = () => {
+    queryClient.clear()
     setToken("")
+    showSnackbar("サインアウトしました。", "info")
+    navigate("/")
   }
 
   const menuContent = !noAuth && userQuery.data ? (

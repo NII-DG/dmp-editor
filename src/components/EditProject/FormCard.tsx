@@ -1,21 +1,33 @@
 import SaveOutlined from "@mui/icons-material/SaveOutlined"
-import { Box, Typography, Button, Divider, Alert, Snackbar } from "@mui/material"
+import {
+  Box,
+  Button,
+  Divider,
+  Step,
+  StepButton,
+  StepIcon,
+  StepLabel,
+  Stepper,
+  Typography,
+} from "@mui/material"
+import type { StepIconProps } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
-import { useFormContext } from "react-hook-form"
+import { FieldPath, useFormContext } from "react-hook-form"
 import { useNavigate, useParams } from "react-router-dom"
 
 import DataInfoSection from "@/components/EditProject/DataInfoSection"
-import DmpMetadataSection from "@/components/EditProject/DmpMetadataSection"
-import GrdmProject from "@/components/EditProject/GrdmProject"
+import DmpMetaSection from "@/components/EditProject/DmpMetaSection"
+import FileTreeSection from "@/components/EditProject/FileTreeSection"
 import PersonInfoSection from "@/components/EditProject/PersonInfoSection"
 import ProjectInfoSection from "@/components/EditProject/ProjectInfoSection"
+import ProjectTableSection from "@/components/EditProject/ProjectTableSection"
 import OurCard from "@/components/OurCard"
 import { DmpFormValues } from "@/dmp"
 import { ProjectInfo } from "@/grdmClient"
+import { useSnackbar } from "@/hooks/useSnackbar"
 import { useUpdateDmp } from "@/hooks/useUpdateDmp"
 import { User } from "@/hooks/useUser"
-import { getErrorChain } from "@/utils"
 
 export interface FormCardProps {
   sx?: SxProps
@@ -27,18 +39,100 @@ export interface FormCardProps {
 
 type SaveState = "idle" | "saving" | "saved" | "error"
 
+const STEPS = [
+  { label: "基本設定" },
+  { label: "プロジェクト情報" },
+  { label: "担当者情報" },
+  { label: "研究データ情報" },
+  { label: "GRDM 連携" },
+] as const
+
+const STEP_FIELDS: Record<number, FieldPath<DmpFormValues>[]> = {
+  0: [
+    "grdmProjectName",
+    "dmp.metadata.revisionType",
+    "dmp.metadata.submissionDate",
+    "dmp.metadata.dateCreated",
+    "dmp.metadata.dateModified",
+  ],
+  1: [
+    "dmp.projectInfo.fundingAgency",
+    "dmp.projectInfo.projectCode",
+    "dmp.projectInfo.projectName",
+  ],
+  2: [], // PersonInfoSection: validated individually in dialog
+  3: [], // DataInfoSection: validated individually in dialog
+  4: [], // GRDM connection: no validation required
+}
+
+/** Step icon that renders a red circle with "!" when the step has a validation error. */
+function CustomStepIcon(props: StepIconProps) {
+  const { error, ...rest } = props
+  if (error) {
+    return (
+      <Box
+        data-testid="step-error-icon"
+        sx={{
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          backgroundColor: "error.main",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "0.875rem",
+          fontWeight: "bold",
+        }}
+      >
+        !
+      </Box>
+    )
+  }
+  return <StepIcon {...rest} />
+}
+
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { getValues, handleSubmit, formState } = useFormContext<DmpFormValues>()
+  const { getValues, handleSubmit, formState, reset, trigger, setError } = useFormContext<DmpFormValues>()
   const { isValid, isSubmitted } = formState
-  const [alertMessage, setAlertMessage] = useState<string | null>(null)
-  const snackbarOpen = alertMessage !== null
   const updateMutation = useUpdateDmp()
-  // const [isMutating, setIsMutating] = useState(false)
+  const { showSnackbar } = useSnackbar()
   const [saveState, setSaveState] = useState<SaveState>("idle")
+  const [activeStep, setActiveStep] = useState(0)
+  const [stepErrors, setStepErrors] = useState<Set<number>>(new Set())
+
+  /** Validate the fields for a given step and update the stepErrors set. */
+  const validateStepFields = async (stepIndex: number): Promise<boolean> => {
+    const fields = STEP_FIELDS[stepIndex]
+    if (fields.length === 0) {
+      setStepErrors((prev) => {
+        const next = new Set(prev)
+        next.delete(stepIndex)
+        return next
+      })
+      return true
+    }
+    const valid = await trigger(fields)
+    setStepErrors((prev) => {
+      const next = new Set(prev)
+      if (valid) next.delete(stepIndex)
+      else next.add(stepIndex)
+      return next
+    })
+    return valid
+  }
 
   const onSubmit = async () => {
+    // grdmProjectName Controller is only mounted at Step 0, so handleSubmit does not
+    // validate it when saving from another step. Validate manually before proceeding.
+    if (isNew && !getValues("grdmProjectName")?.trim()) {
+      setError("grdmProjectName", { type: "required", message: "プロジェクト名は必須です" })
+      setActiveStep(0)
+      return
+    }
+
     const formValues = getValues()
     setSaveState("saving")
 
@@ -48,22 +142,50 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
         onSuccess: (newProjectId: string) => {
           setSaveState("saved")
           setTimeout(() => setSaveState("idle"), 2000)
-          if (isNew) navigate(`/projects/${newProjectId}`)
+          showSnackbar("DMPを保存しました", "success")
+          // reset() updates the RHF live store (isDirty = false) synchronously.
+          // The useBlocker in EditProject reads from the live store via a stable
+          // ref function, so navigate() called right after is not blocked.
+          reset(formValues)
+          const targetProjectId = isNew ? newProjectId : projectId
+          if (activeStep === STEPS.length - 1) {
+            // Last step: navigate to detail page for both new and existing projects
+            navigate(`/projects/${targetProjectId}/detail`)
+          } else if (isNew) {
+            // Other steps with a new project: navigate to the edit page
+            navigate(`/projects/${newProjectId}`)
+          }
         },
-        onError: (error: unknown) => {
+        onError: () => {
           setSaveState("error")
           setTimeout(() => setSaveState("idle"), 2000)
-          const messages = getErrorChain(error).map((e) => e.message)
-          if (messages.some((msg) => msg.includes("HTTP Error: 403"))) {
-            setAlertMessage(
-              "GRDM Token に、プロジェクトを作成する権限 (\"osf.full_write\") が存在しないようです。ご確認よろしくお願いします。",
-            )
-          } else {
-            setAlertMessage(`DMP の更新に失敗しました: ${messages.join(", ")}`)
-          }
+          showSnackbar("保存に失敗しました", "error")
         },
       },
     )
+  }
+
+  const handleNext = async () => {
+    const valid = await validateStepFields(activeStep)
+    if (valid) {
+      setActiveStep((prev) => prev + 1)
+    }
+  }
+
+  const handleBack = () => {
+    setActiveStep((prev) => prev - 1)
+  }
+
+  /**
+   * Handle step bar click. Validates the current step's fields and updates the
+   * error indicator, then navigates to the clicked step regardless of validity.
+   *
+   * In isNew mode this handler is only called for steps before the current step
+   * (going back), because future steps are rendered as non-interactive StepLabel.
+   */
+  const handleStepClick = async (targetStep: number) => {
+    await validateStepFields(activeStep)
+    setActiveStep(targetStep)
   }
 
   const buttonLabel = () => {
@@ -72,6 +194,7 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
     if (saveState === "error") return "保存に失敗"
     return "GRDM に保存する"
   }
+
   const isButtonDisabled = () => {
     if (saveState === "saving" || saveState === "saved" || saveState === "error") return true
     return isSubmitted && !isValid
@@ -79,51 +202,79 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
 
   return (
     <OurCard sx={sx}>
-      <Box
-        component="form"
-        onSubmit={handleSubmit(onSubmit)}
-      >
+      <Box component="form" onSubmit={handleSubmit(onSubmit)}>
         <Typography
           sx={{ fontSize: "1.5rem" }}
           component="h1"
           children={isNew ? "DMP Project の新規作成" : "DMP Project の編集"}
         />
-        <GrdmProject sx={{ mt: "1rem" }} isNew={isNew} project={project} projects={projects} />
-        <Divider sx={{ my: "1.5rem" }} />
-        <Box sx={{ display: "flex", flexDirection: "column" }}>
-          <DmpMetadataSection />
-          <Divider sx={{ my: "1.5rem" }} />
-          <ProjectInfoSection />
-          <Divider sx={{ my: "1.5rem" }} />
-          <PersonInfoSection />
-          <Divider sx={{ my: "1.5rem" }} />
-          <DataInfoSection user={user} projects={projects} />
+
+        <Stepper activeStep={activeStep} alternativeLabel nonLinear sx={{ mt: "1.5rem" }}>
+          {STEPS.map((step, i) => {
+            const hasError = stepErrors.has(i)
+            // isNew: only allow clicking steps already visited (i < activeStep, going back).
+            // isNew=false: allow clicking any step except the currently active one.
+            const isClickable = isNew ? i < activeStep : i !== activeStep
+            return (
+              <Step key={step.label} completed={i < activeStep}>
+                {isClickable ? (
+                  // Render StepLabel as child so MUI cloneElement preserves error/StepIconComponent.
+                  // StepButton does not forward StepLabelProps in MUI v7.
+                  <StepButton onClick={() => handleStepClick(i)}>
+                    <StepLabel error={hasError} StepIconComponent={CustomStepIcon}>
+                      {step.label}
+                    </StepLabel>
+                  </StepButton>
+                ) : (
+                  <StepLabel error={hasError} StepIconComponent={CustomStepIcon}>
+                    {step.label}
+                  </StepLabel>
+                )}
+              </Step>
+            )
+          })}
+        </Stepper>
+
+        <Box sx={{ mt: "2rem" }}>
+          {activeStep === 0 && (
+            <DmpMetaSection isNew={isNew} project={project} projects={projects} />
+          )}
+          {activeStep === 1 && <ProjectInfoSection />}
+          {activeStep === 2 && <PersonInfoSection />}
+          {activeStep === 3 && <DataInfoSection user={user} projects={projects} />}
+          {activeStep === 4 && (
+            <>
+              <ProjectTableSection user={user} projects={projects} />
+              <Divider sx={{ my: "1.5rem" }} />
+              <FileTreeSection projects={projects} />
+            </>
+          )}
         </Box>
-        <Divider sx={{ my: "1.5rem" }} />
-        <Box sx={{ display: "flex", flexDirection: "row", mt: "1.5rem" }}>
-          <Button
-            variant="contained"
-            color="secondary"
-            type="submit"
-            sx={{
-              textTransform: "none",
-              width: "180px",
-            }}
-            children={buttonLabel()}
-            disabled={isButtonDisabled()}
-            startIcon={<SaveOutlined />}
-          />
+
+        <Box sx={{ display: "flex", flexDirection: "row", gap: "1rem", mt: "2rem", alignItems: "center" }}>
+          <Button variant="outlined" onClick={handleBack} disabled={activeStep === 0}>
+            前へ
+          </Button>
+          {activeStep < STEPS.length - 1 && (
+            <Button variant="contained" onClick={handleNext}>
+              次へ
+            </Button>
+          )}
+          <Box sx={{ flexGrow: 1 }} />
+          {(!isNew || activeStep === STEPS.length - 1) && (
+            <Button
+              variant="contained"
+              color="secondary"
+              type="submit"
+              sx={{ textTransform: "none", width: "180px" }}
+              startIcon={<SaveOutlined />}
+              disabled={isButtonDisabled()}
+            >
+              {buttonLabel()}
+            </Button>
+          )}
         </Box>
       </Box>
-
-      <Snackbar
-        open={snackbarOpen}
-        onClose={() => setAlertMessage(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        autoHideDuration={10000}
-      >
-        <Alert onClose={() => setAlertMessage(null)} severity="error" sx={{ width: "100%" }} children={alertMessage} />
-      </Snackbar>
     </OurCard>
   )
 }

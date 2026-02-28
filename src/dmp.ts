@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx"
 import { z } from "zod"
 
 import { User } from "@/hooks/useUser"
@@ -7,11 +6,14 @@ import { User } from "@/hooks/useUser"
 
 // DMP 作成・更新情報
 export const revisionType = ["新規", "修正", "更新"] as const
+export const researchPhases = ["計画時", "研究中", "報告時"] as const
+export type ResearchPhase = typeof researchPhases[number]
 export const dmpMetadataSchema = z.object({
   revisionType: z.enum(revisionType), // 種別
   submissionDate: z.string(), // 提出日 YYYY-MM-DD
   dateCreated: z.string(), // DMP作成年月日 YYYY-MM-DD
   dateModified: z.string(), // DMP最終更新年月日 YYYY-MM-DD
+  researchPhase: z.enum(researchPhases).default("計画時"), // 研究フェーズ
 })
 export type DmpMetadata = z.infer<typeof dmpMetadataSchema>
 
@@ -38,6 +40,7 @@ export const personInfoSchema = z.object({
   eRadResearcherId: z.string().nullable().optional(), // e-Rad研究者番号
   orcid: z.string().nullable().optional(), // ORCID
   affiliation: z.string(), // 所属機関
+  contact: z.string().nullable().optional(), // email address
 })
 export type PersonInfo = z.infer<typeof personInfoSchema>
 
@@ -77,7 +80,7 @@ export const hasSensitiveData = ["有", "無"] as const
 export const accessRights = ["公開", "共有", "非共有・非公開", "公開期間猶予"] as const
 export const dataInfoSchema = z.object({
   dataName: z.string(), // 管理対象データの名称
-  publicationDate: z.string(), // 掲載日・掲載更新日
+  publicationDate: z.string().nullable().optional(), // 掲載日・掲載更新日
   description: z.string(), // データの説明
   acquisitionMethod: z.string().nullable().optional(), // 管理対象データの取得または収集方法
   researchField: z.enum(researchField), // データの分野
@@ -91,8 +94,8 @@ export const dataInfoSchema = z.object({
   backupLocation: z.string().nullable().optional(), // 管理対象データのバックアップ場所 (研究活動時)
   publicationPolicy: z.string().nullable().optional(), // 管理対象データの公開・提供方針詳細
   accessRights: z.enum(accessRights), // アクセス権
-  plannedPublicationDate: z.string(), // 管理対象データの公開予定日 YYYY-MM-DD
-  repository: z.string(), // リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)
+  plannedPublicationDate: z.string().nullable().optional(), // 管理対象データの公開予定日 YYYY-MM-DD
+  repository: z.string().nullable().optional(), // リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)
   dataCreator: z.number().nullable().optional(), // 管理対象データの作成者
   dataManagementAgency: z.string(), // データ管理機関
   rorId: z.string().nullable().optional(), // データ管理機関コード (ROR ID)
@@ -131,8 +134,8 @@ export interface DmpFormValues {
 export const initDmp = (user: User | null | undefined = null): Dmp => {
   const personInfo: PersonInfo[] = user ? [{
     role: ["研究代表者"],
-    lastName: user.familyName,
-    firstName: user.givenName,
+    lastName: user.familyNameJa ?? user.familyName,
+    firstName: user.givenNameJa ?? user.givenName,
     eRadResearcherId: user.researcherId ?? "",
     orcid: user.orcid ?? "",
     affiliation: user.affiliation ?? "",
@@ -144,6 +147,7 @@ export const initDmp = (user: User | null | undefined = null): Dmp => {
       submissionDate: todayString(),
       dateCreated: todayString(),
       dateModified: todayString(),
+      researchPhase: "計画時",
     },
     projectInfo: {
       fundingAgency: "",
@@ -170,6 +174,7 @@ export const initPersonInfo = (): PersonInfo => {
     eRadResearcherId: undefined,
     orcid: undefined,
     affiliation: "",
+    contact: undefined,
   }
 }
 
@@ -177,7 +182,7 @@ export const initPersonInfo = (): PersonInfo => {
 export const initDataInfo = (): DataInfo => {
   return {
     dataName: "",
-    publicationDate: "",
+    publicationDate: undefined,
     description: "",
     acquisitionMethod: undefined,
     researchField: "ライフサイエンス",
@@ -191,8 +196,8 @@ export const initDataInfo = (): DataInfo => {
     backupLocation: undefined,
     publicationPolicy: undefined,
     accessRights: "公開",
-    plannedPublicationDate: "",
-    repository: "",
+    plannedPublicationDate: undefined,
+    repository: undefined,
     dataCreator: undefined,
     dataManagementAgency: "",
     rorId: undefined,
@@ -202,125 +207,6 @@ export const initDataInfo = (): DataInfo => {
     dataStoragePeriod: undefined,
     linkedGrdmFiles: [],
   }
-}
-
-// === Generate Excel Data ===
-
-export const exportToExcel = (dmp: Dmp): Blob => {
-  const workbook = XLSX.utils.book_new()
-
-  // DMP 作成・更新情報
-  const dmpMetadata = [
-    ["種別", dmp.metadata.revisionType],
-    ["提出日", dmp.metadata.submissionDate],
-    ["DMP 作成年月日", dmp.metadata.dateCreated],
-    ["DMP 最終更新年月日", dmp.metadata.dateModified],
-  ]
-  const dmpMetadataSheet = XLSX.utils.aoa_to_sheet(dmpMetadata)
-  XLSX.utils.book_append_sheet(workbook, dmpMetadataSheet, "DMP 作成・更新情報")
-
-  // DMP 作成・更新情報
-  const projectInfo = [
-    ["資金配分機関情報", dmp.projectInfo.fundingAgency],
-    ["プログラム名", dmp.projectInfo.programName ?? ""],
-    ["体系的番号におけるプログラム情報コード", dmp.projectInfo.programCode ?? ""],
-    ["採択年度", dmp.projectInfo.adoptionYear ?? ""],
-    ["事業開始年度", dmp.projectInfo.startYear ?? ""],
-    ["事業終了年度", dmp.projectInfo.endYear ?? ""],
-    ["体系的番号", dmp.projectInfo.projectCode],
-    ["プロジェクト名", dmp.projectInfo.projectName],
-  ]
-  const projectInfoSheet = XLSX.utils.aoa_to_sheet(projectInfo)
-  XLSX.utils.book_append_sheet(workbook, projectInfoSheet, "プロジェクト情報")
-
-  // 担当者情報
-  const personInfoHeader = ["", "本計画書内通し番号", "姓", "名", "e-Rad 研究者番号", "ORCID", "所属機関"]
-  const personInfoData = []
-  for (const role of personRole) {
-    for (const person of dmp.personInfo) {
-      if (person.role.includes(role)) {
-        personInfoData.push([
-          role,
-          "", // Add index after
-          person.lastName,
-          person.firstName,
-          person.eRadResearcherId ?? "",
-          person.orcid ?? "",
-          person.affiliation,
-        ])
-      }
-    }
-  }
-  const personNames = listingPersonNames(dmp)
-  for (const row of personInfoData) {
-    const name = `${row[2]} ${row[3]}`.trim()
-    const index = personNames.indexOf(name) + 1
-    row[1] = `${index}`
-  }
-  const personInfoSheet = XLSX.utils.aoa_to_sheet([personInfoHeader, ...personInfoData])
-  XLSX.utils.book_append_sheet(workbook, personInfoSheet, "担当者情報")
-
-  // 研究データ情報
-  const dataInfoHeader = [
-    "データ No.",
-    "管理対象データの名称",
-    "掲載日・掲載更新日",
-    "データの説明",
-    "管理対象データの取得または収集方法",
-    "データの分野",
-    "データ種別",
-    "概略データ量",
-    "再利用を可能にするための情報",
-    "機微情報の有無",
-    "機微情報がある場合の取扱い方針",
-    "管理対象データの利活用・提供方針 (研究活動時)",
-    "リポジトリ情報 (研究活動時)",
-    "管理対象データのバックアップ場所 (研究活動時)",
-    "管理対象データの公開・提供方針詳細",
-    "アクセス権",
-    "管理対象データの公開予定日",
-    "リポジトリ情報 (リポジトリ URL・DOIリンク) (研究活動後)",
-    "管理対象データの作成者",
-    "データ管理機関",
-    "データ管理機関コード (ROR ID)",
-    "データ管理者 (部署名等)",
-    "データ管理者の連絡先",
-    "研究データの保存場所 (研究事業終了後)",
-    "研究データの保存期間 (研究事業終了後)",
-  ]
-  const dataInfoData = dmp.dataInfo.map((data, index) => [
-    index + 1,
-    data.dataName,
-    data.publicationDate,
-    data.description,
-    data.acquisitionMethod ?? "",
-    data.researchField,
-    data.dataType,
-    data.dataSize ?? "",
-    data.reuseInformation ?? "",
-    data.hasSensitiveData ?? "",
-    data.sensitiveDataPolicy ?? "",
-    data.usagePolicy,
-    data.repositoryInformation,
-    data.backupLocation ?? "",
-    data.publicationPolicy ?? "",
-    data.accessRights,
-    data.plannedPublicationDate,
-    data.repository,
-    data.dataCreator ?? "",
-    data.dataManagementAgency,
-    data.rorId ?? "",
-    data.dataManager,
-    data.dataManagerContact,
-    data.dataStorageLocation ?? "",
-    data.dataStoragePeriod ?? "",
-  ])
-  const dataInfoSheet = XLSX.utils.aoa_to_sheet([dataInfoHeader, ...dataInfoData])
-  XLSX.utils.book_append_sheet(workbook, dataInfoSheet, "研究データ情報")
-
-  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
-
-  return new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
 }
 
 // === Utility functions ===

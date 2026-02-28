@@ -1,12 +1,15 @@
-import { Box, TextField, FormControl, MenuItem, Link } from "@mui/material"
+import SearchIcon from "@mui/icons-material/Search"
+import { Box, TextField, FormControl, MenuItem, Link, Button, CircularProgress, InputAdornment } from "@mui/material"
 import { SxProps } from "@mui/system"
-import React from "react"
+import React, { useState } from "react"
 import { useFormContext, Controller } from "react-hook-form"
 
 import HelpChip from "@/components/EditProject/HelpChip"
 import OurFormLabel from "@/components/EditProject/OurFormLabel"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import type { ProjectInfo, DmpFormValues } from "@/dmp"
+import { useKakenProject } from "@/hooks/useKakenProject"
+import { useSnackbar } from "@/hooks/useSnackbar"
 
 interface FormData {
   key: keyof ProjectInfo
@@ -107,6 +110,70 @@ interface ProjectInfoSectionProps {
   sx?: SxProps
 }
 
+/** Inner component that handles KAKEN search with the hook. */
+function KakenSearchPanel() {
+  const { setValue } = useFormContext<DmpFormValues>()
+  const [kakenNumber, setKakenNumber] = useState("")
+  const { refetch, isFetching } = useKakenProject(kakenNumber)
+  const { showSnackbar } = useSnackbar()
+
+  const handleSearch = async () => {
+    if (!kakenNumber.trim()) return
+    const result = await refetch()
+    if (result.isSuccess && result.data) {
+      const info = result.data
+      setValue("dmp.projectInfo.fundingAgency", info.fundingAgency)
+      setValue("dmp.projectInfo.programName", info.programName)
+      setValue("dmp.projectInfo.programCode", info.programCode)
+      setValue("dmp.projectInfo.projectCode", info.projectCode)
+      setValue("dmp.projectInfo.projectName", info.projectName)
+      setValue("dmp.projectInfo.adoptionYear", info.adoptionYear)
+      setValue("dmp.projectInfo.startYear", info.startYear)
+      setValue("dmp.projectInfo.endYear", info.endYear)
+    } else if (result.isSuccess && result.data === null) {
+      // no projects found — keep existing values, show nothing
+    } else if (result.isError) {
+      showSnackbar("情報の取得に失敗しました", "error")
+    }
+  }
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: "0.5rem", mb: "1rem" }}>
+      <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
+        <TextField
+          label="KAKEN番号で自動補完"
+          placeholder="例: 23K12345"
+          value={kakenNumber}
+          onChange={(e) => setKakenNumber(e.target.value)}
+          size="small"
+          sx={{ maxWidth: "300px" }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSearch()
+          }}
+        />
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={handleSearch}
+          disabled={isFetching || !kakenNumber.trim()}
+          startIcon={isFetching ? <CircularProgress size={16} /> : undefined}
+        >
+          {isFetching ? "検索中..." : "検索"}
+        </Button>
+      </Box>
+    </Box>
+  )
+}
+
 export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
   const { control } = useFormContext<DmpFormValues>()
 
@@ -114,6 +181,7 @@ export default function ProjectInfoSection({ sx }: ProjectInfoSectionProps) {
     <Box sx={{ ...sx, display: "flex", flexDirection: "column" }}>
       <SectionHeader text="プロジェクト情報" />
       <Box sx={{ display: "flex", flexDirection: "column", gap: "1rem", mt: "1rem" }}>
+        <KakenSearchPanel />
         {formData.map(({ key, label, required, width, helperText, type, options, helpChip }) => (
           <Controller
             key={key}

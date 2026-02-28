@@ -24,6 +24,7 @@ import tokenEg2Url from "@/assets/token-eg-2.png"
 import OurCard from "@/components/OurCard"
 import { GRDM_CONFIG } from "@/config"
 import { authenticateGrdm } from "@/grdmClient"
+import { useSnackbar } from "@/hooks/useSnackbar"
 import { tokenAtom } from "@/store/token"
 
 export interface LoginCardProps {
@@ -45,6 +46,7 @@ export default function LoginCard({ sx }: LoginCardProps) {
   })
   const [showToken, setShowToken] = useState(false)
   const setToken = useSetRecoilState(tokenAtom)
+  const { showSnackbar } = useSnackbar()
 
   const onSubmit = async (data: FormValues) => {
     const { token } = data
@@ -52,6 +54,7 @@ export default function LoginCard({ sx }: LoginCardProps) {
       const result = await authenticateGrdm(token)
       if (result) {
         setToken(token)
+        showSnackbar("認証に成功しました。", "success")
       } else {
         setError("token", {
           type: "manual",

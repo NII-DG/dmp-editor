@@ -5,6 +5,7 @@ import { ReactElement } from "react"
 import { MemoryRouter } from "react-router-dom"
 import { RecoilRoot } from "recoil"
 
+import SnackbarProvider from "../src/components/SnackbarProvider"
 import { theme } from "../src/theme"
 
 export function renderWithProviders(
@@ -20,7 +21,9 @@ export function renderWithProviders(
     <MemoryRouter initialEntries={[route]}>
       <ThemeProvider theme={theme}>
         <RecoilRoot>
-          <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+          <QueryClientProvider client={queryClient}>
+            <SnackbarProvider>{ui}</SnackbarProvider>
+          </QueryClientProvider>
         </RecoilRoot>
       </ThemeProvider>
     </MemoryRouter>,

@@ -1,16 +1,24 @@
-import { useEffect } from "react"
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@mui/material"
+import { useEffect, useRef, useState } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
 import ExportDmpCard from "@/components/EditProject/ExportDmpCard"
 import FormCard from "@/components/EditProject/FormCard"
-import GrdmCard from "@/components/EditProject/GrdmCard"
 import Frame from "@/components/Frame"
 import Loading from "@/components/Loading"
 import { initDmp, DmpFormValues } from "@/dmp"
 import { useDmp } from "@/hooks/useDmp"
 import { useProjectInfo } from "@/hooks/useProjectInfo"
 import { useProjects } from "@/hooks/useProjects"
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning"
 import { useUser } from "@/hooks/useUser"
 
 interface EditProjectProps {
@@ -24,7 +32,23 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
   const projectQuery = useProjectInfo(projectId, isNew)
   const projectsQuery = useProjects()
 
-  const loading = dmpQuery.isLoading || userQuery.isLoading || projectQuery.isLoading || projectsQuery.isLoading
+  const [formInitialized, setFormInitialized] = useState(false)
+  const [minDelayComplete, setMinDelayComplete] = useState(false)
+
+  useEffect(() => {
+    if (!isNew) return
+    const timer = setTimeout(() => setMinDelayComplete(true), 500)
+    return () => clearTimeout(timer)
+  }, [isNew])
+
+  const loading = isNew
+    ? !formInitialized || !minDelayComplete || userQuery.isLoading || projectsQuery.isLoading
+    : dmpQuery.isLoading ||
+      userQuery.isLoading ||
+      projectQuery.isLoading ||
+      projectsQuery.isLoading ||
+      !userQuery.data ||
+      !projectsQuery.data
   const error = dmpQuery.error || userQuery.error || projectQuery.error || projectsQuery.error
 
   const methods = useForm<DmpFormValues>({
@@ -36,16 +60,34 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
     reValidateMode: "onBlur",
   })
 
-  // Initialize default values based on the fetched data
+  // Initialize form values based on fetched data
   useEffect(() => {
-    if (dmpQuery.data && userQuery.data && projectQuery.data) {
-      const defaultValues = {
-        grdmProjectName: projectQuery.data?.title ?? "",
-        dmp: isNew ? initDmp(userQuery.data) : dmpQuery.data,
+    if (isNew) {
+      // Guard with !formInitialized to prevent re-initialization on query refetch,
+      // which would overwrite user-entered form values like grdmProjectName.
+      if (!formInitialized && userQuery.data && projectsQuery.data) {
+        methods.reset({
+          grdmProjectName: "",
+          dmp: initDmp(userQuery.data),
+        })
+        setFormInitialized(true)
       }
-      methods.reset(defaultValues)
+    } else if (dmpQuery.data && userQuery.data && projectQuery.data) {
+      methods.reset({
+        grdmProjectName: projectQuery.data.title ?? "",
+        dmp: dmpQuery.data,
+      })
     }
-  }, [isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data])
+  }, [formInitialized, isNew, methods, dmpQuery.data, userQuery.data, projectQuery.data, projectsQuery.data])
+
+  // Stable function that reads from the RHF live store at navigation time.
+  // methods.formState.isDirty reads from a React-state-backed proxy, which is
+  // still stale (true) immediately after reset() because React batches the
+  // setState call asynchronously. methods.control._formState is the module-level
+  // variable updated synchronously by _setFormState() inside reset(), so it
+  // already reflects isDirty=false when navigate() is called right after reset().
+  const checkIsDirty = useRef(() => methods.control._formState.isDirty).current
+  const blocker = useUnsavedChangesWarning(methods.formState.isDirty, checkIsDirty)
 
   if (loading) {
     return (
@@ -67,9 +109,25 @@ export default function EditProject({ isNew = false }: EditProjectProps) {
           project={projectQuery.data}
           projects={projectsQuery.data!}
         />
-        <GrdmCard sx={{ mt: "1.5rem" }} user={userQuery.data!} projects={projectsQuery.data!} />
         <ExportDmpCard sx={{ mt: "1.5rem" }} />
       </FormProvider>
+
+      <Dialog open={blocker.state === "blocked"} onClose={() => blocker.reset?.()}>
+        <DialogTitle>{"未保存の変更があります"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {"保存せずにページを離れると、変更内容が失われます。続けますか？"}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => blocker.reset?.()} color="primary">
+            {"このページに留まる"}
+          </Button>
+          <Button onClick={() => blocker.proceed?.()} color="error" autoFocus>
+            {"変更を破棄して離れる"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Frame>
   )
 }

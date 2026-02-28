@@ -1,11 +1,12 @@
 import AddLinkOutlined from "@mui/icons-material/AddLinkOutlined"
 import ErrorOutline from "@mui/icons-material/ErrorOutline"
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import FolderOutlined from "@mui/icons-material/FolderOutlined"
 import FolderSpecialOutlined from "@mui/icons-material/FolderSpecialOutlined"
 import InsertDriveFileOutlined from "@mui/icons-material/InsertDriveFileOutlined"
 import LinkOffOutlined from "@mui/icons-material/LinkOffOutlined"
 import OpenInNew from "@mui/icons-material/OpenInNew"
-import { Box, Typography, Card, CircularProgress, Button, Dialog, DialogTitle, DialogContent, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip, Link, DialogActions } from "@mui/material"
+import { Box, Typography, CircularProgress, Button, Dialog, DialogTitle, DialogContent, TableContainer, Paper, Table, TableHead, TableRow, TableCell, TableBody, Chip, Link, DialogActions, Accordion, AccordionSummary, AccordionDetails } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { TreeItem, SimpleTreeView } from "@mui/x-tree-view"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
@@ -192,7 +193,8 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
   const linkedProjectIds = useMemo(() => linkedProjects.map((p) => p.projectId), [linkedProjects])
 
   const [tree, setTree] = useState<FileTree>([])
-  const [expanded, setExpanded] = useState<string[]>([])
+  // Per-project expanded state for tree items within each accordion
+  const [expandedMap, setExpandedMap] = useState<Record<string, string[]>>({})
   const [loadingNodeIds, setLoadingNodeIds] = useState<Set<string>>(new Set())
 
   // Dialog
@@ -229,9 +231,64 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
     })
   }, [linkedProjectIds, projects])
 
-  const handleToggle = async (_event: React.SyntheticEvent | null, nodeIds: string[]) => {
-    const newlyExpandedNodeId = nodeIds.find((id) => !expanded.includes(id))
-    setExpanded(nodeIds)
+  // Fetch root files for the first (default-expanded) project when it initializes
+  const firstProjectId = tree.length > 0 ? tree[0].nodeId : null
+  useEffect(() => {
+    if (!firstProjectId) return
+    const firstNode = tree[0]
+    if (!firstNode || isAlreadyFetched(firstNode) || loadingNodeIds.has(firstNode.nodeId)) return
+
+    setLoadingNodeIds((prev) => new Set(prev).add(firstNode.nodeId))
+
+    fetchFileNodes(token, firstNode)
+      .then((fetchedNodes) => {
+        setTree((prevTree) => updateNodeInTree(prevTree, firstNode, { children: fetchedNodes }))
+      })
+      .catch(() => {
+        const errorNode = createErrorNode(firstNode.projectId)
+        setTree((prevTree) => updateNodeInTree(prevTree, firstNode, { children: [errorNode] }))
+      })
+      .finally(() => {
+        setLoadingNodeIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(firstNode.nodeId)
+          return newSet
+        })
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstProjectId, token])
+
+  // Handle accordion expansion for a project node (fetches root files on first expand)
+  const handleAccordionChange = (projectNode: TreeNode) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+    if (!isExpanded) return
+    const currentNode = findNodeInTree(tree, projectNode.nodeId)
+    if (!currentNode) return
+    if (isAlreadyFetched(currentNode) || loadingNodeIds.has(currentNode.nodeId)) return
+
+    setLoadingNodeIds((prev) => new Set(prev).add(currentNode.nodeId))
+
+    fetchFileNodes(token, currentNode)
+      .then((fetchedNodes) => {
+        setTree((prevTree) => updateNodeInTree(prevTree, currentNode, { children: fetchedNodes }))
+      })
+      .catch(() => {
+        const errorNode = createErrorNode(currentNode.projectId)
+        setTree((prevTree) => updateNodeInTree(prevTree, currentNode, { children: [errorNode] }))
+      })
+      .finally(() => {
+        setLoadingNodeIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(currentNode.nodeId)
+          return newSet
+        })
+      })
+  }
+
+  // Handle tree item expansion within a specific project's SimpleTreeView
+  const handleTreeToggle = (projectId: string) => async (_event: React.SyntheticEvent | null, nodeIds: string[]) => {
+    const prevExpanded = expandedMap[projectId] ?? []
+    const newlyExpandedNodeId = nodeIds.find((id) => !prevExpanded.includes(id))
+    setExpandedMap((prev) => ({ ...prev, [projectId]: nodeIds }))
     if (!newlyExpandedNodeId) return
     if (loadingNodeIds.has(newlyExpandedNodeId)) return
 
@@ -572,25 +629,46 @@ export default function FileTreeSection({ sx, projects }: FileTreeSectionProps) 
       <Typography sx={{ mt: "0.5rem" }}>
         {"DMP 上で作成した研究データと GRDM Project 上の file との関連付けを行います。"}
       </Typography>
-      <Card sx={{ p: "0.5rem", mt: "1rem" }} variant="outlined">
-        {tree.length === 0 ? (
+
+      {tree.length === 0 ? (
+        <Box sx={{ p: "0.5rem", mt: "1rem", border: `1px solid ${theme.palette.divider}`, borderRadius: "4px" }}>
           <Typography sx={{ mx: "1rem", my: "0.5rem" }}>
             {"関連付けられた GRDM Project がありません。"}
           </Typography>
-        ) : (
-          <SimpleTreeView
-            expandedItems={expanded}
-            onExpandedItemsChange={(e, nodeIds) => handleToggle(e, nodeIds)}
-            selectedItems={null}
-            onItemClick={() => {
-              //do nothing
-            }}
-            itemChildrenIndentation={24}
-          >
-            {tree.map((node) => renderTree(node))}
-          </SimpleTreeView>
-        )}
-      </Card>
+        </Box>
+      ) : (
+        <Box sx={{ mt: "1rem" }}>
+          {tree.map((projectNode, idx) => (
+            <Accordion
+              key={projectNode.nodeId}
+              defaultExpanded={idx === 0}
+              onChange={handleAccordionChange(projectNode)}
+              variant="outlined"
+              disableGutters
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <FolderSpecialOutlined fontSize="small" sx={{ color: theme.palette.grey[700] }} />
+                  <Typography>{projectNode.label}</Typography>
+                </Box>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: "0.5rem" }}>
+                <SimpleTreeView
+                  expandedItems={expandedMap[projectNode.projectId] ?? []}
+                  onExpandedItemsChange={(e, nodeIds) => handleTreeToggle(projectNode.projectId)(e, nodeIds)}
+                  selectedItems={null}
+                  onItemClick={() => {
+                    //do nothing
+                  }}
+                  itemChildrenIndentation={24}
+                >
+                  {projectNode.children.map((child) => renderTree(child))}
+                </SimpleTreeView>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </Box>
+      )}
 
       <Dialog
         open={openNodeId !== null}
