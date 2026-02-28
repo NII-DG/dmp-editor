@@ -5,9 +5,12 @@ import {
   Divider,
   Step,
   StepButton,
+  StepIcon,
+  StepLabel,
   Stepper,
   Typography,
 } from "@mui/material"
+import type { StepIconProps } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
 import { FieldPath, useFormContext } from "react-hook-form"
@@ -62,6 +65,33 @@ const STEP_FIELDS: Record<number, FieldPath<DmpFormValues>[]> = {
   4: [], // GRDM connection: no validation required
 }
 
+/** Step icon that renders a red circle with "!" when the step has a validation error. */
+function CustomStepIcon(props: StepIconProps) {
+  const { error, ...rest } = props
+  if (error) {
+    return (
+      <Box
+        data-testid="step-error-icon"
+        sx={{
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          backgroundColor: "error.main",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "0.875rem",
+          fontWeight: "bold",
+        }}
+      >
+        !
+      </Box>
+    )
+  }
+  return <StepIcon {...rest} />
+}
+
 export default function FormCard({ sx, isNew = false, user, project, projects }: FormCardProps) {
   const { projectId = "" } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
@@ -71,6 +101,28 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
   const { showSnackbar } = useSnackbar()
   const [saveState, setSaveState] = useState<SaveState>("idle")
   const [activeStep, setActiveStep] = useState(0)
+  const [stepErrors, setStepErrors] = useState<Set<number>>(new Set())
+
+  /** Validate the fields for a given step and update the stepErrors set. */
+  const validateStepFields = async (stepIndex: number): Promise<boolean> => {
+    const fields = STEP_FIELDS[stepIndex]
+    if (fields.length === 0) {
+      setStepErrors((prev) => {
+        const next = new Set(prev)
+        next.delete(stepIndex)
+        return next
+      })
+      return true
+    }
+    const valid = await trigger(fields)
+    setStepErrors((prev) => {
+      const next = new Set(prev)
+      if (valid) next.delete(stepIndex)
+      else next.add(stepIndex)
+      return next
+    })
+    return valid
+  }
 
   const onSubmit = async () => {
     // grdmProjectName Controller is only mounted at Step 0, so handleSubmit does not
@@ -114,8 +166,7 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
   }
 
   const handleNext = async () => {
-    const fields = STEP_FIELDS[activeStep]
-    const valid = fields.length > 0 ? await trigger(fields) : true
+    const valid = await validateStepFields(activeStep)
     if (valid) {
       setActiveStep((prev) => prev + 1)
     }
@@ -123,6 +174,18 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
 
   const handleBack = () => {
     setActiveStep((prev) => prev - 1)
+  }
+
+  /**
+   * Handle step bar click. Validates the current step's fields and updates the
+   * error indicator, then navigates to the clicked step regardless of validity.
+   *
+   * In isNew mode this handler is only called for steps before the current step
+   * (going back), because future steps are rendered as non-interactive StepLabel.
+   */
+  const handleStepClick = async (targetStep: number) => {
+    await validateStepFields(activeStep)
+    setActiveStep(targetStep)
   }
 
   const buttonLabel = () => {
@@ -147,11 +210,29 @@ export default function FormCard({ sx, isNew = false, user, project, projects }:
         />
 
         <Stepper activeStep={activeStep} alternativeLabel nonLinear sx={{ mt: "1.5rem" }}>
-          {STEPS.map((step, i) => (
-            <Step key={step.label} completed={i < activeStep}>
-              <StepButton onClick={() => setActiveStep(i)}>{step.label}</StepButton>
-            </Step>
-          ))}
+          {STEPS.map((step, i) => {
+            const hasError = stepErrors.has(i)
+            // isNew: only allow clicking steps already visited (i < activeStep, going back).
+            // isNew=false: allow clicking any step except the currently active one.
+            const isClickable = isNew ? i < activeStep : i !== activeStep
+            return (
+              <Step key={step.label} completed={i < activeStep}>
+                {isClickable ? (
+                  // Render StepLabel as child so MUI cloneElement preserves error/StepIconComponent.
+                  // StepButton does not forward StepLabelProps in MUI v7.
+                  <StepButton onClick={() => handleStepClick(i)}>
+                    <StepLabel error={hasError} StepIconComponent={CustomStepIcon}>
+                      {step.label}
+                    </StepLabel>
+                  </StepButton>
+                ) : (
+                  <StepLabel error={hasError} StepIconComponent={CustomStepIcon}>
+                    {step.label}
+                  </StepLabel>
+                )}
+              </Step>
+            )
+          })}
         </Stepper>
 
         <Box sx={{ mt: "2rem" }}>
