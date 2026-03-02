@@ -25,6 +25,14 @@ docker compose -f compose.dev.yml up -d --build
 docker compose -f compose.dev.yml exec app npm run dev
 ```
 
+### Environmental variables
+
+開発環境においては、必要に応じて以下の環境変数を設定してください。
+
+- `VITE_KAKEN_APP_ID`: KAKEN API の application ID。
+    - 「DMP 編集」ページの「2. プロジェクト情報」ステップにて、「KAKEN番号で自動補完」機能を利用する場合に必要です。
+    - 当該 ID の発行方法は「[CiNii全般 - メタデータ・API - API利用登録](https://support.nii.ac.jp/ja/cinii/api/developer)」をご参照ください。
+
 ## Release
 
 新しいバージョンをリリースするには、以下のスクリプトを実行します。
