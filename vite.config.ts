@@ -78,7 +78,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || "0.0.0"),
     DMP_EDITOR_BASE: JSON.stringify(process.env.DMP_EDITOR_BASE || "/"),
     VITE_USE_GRDM_DEV_ENV: JSON.stringify(process.env.VITE_USE_GRDM_DEV_ENV || "false"),
-    KAKEN_APP_ID: JSON.stringify(process.env.KAKEN_APP_ID ?? ""),
+    VITE_KAKEN_APP_ID: JSON.stringify(process.env.VITE_KAKEN_APP_ID ?? ""),
   },
   base: process.env.DMP_EDITOR_BASE || "/",
 })

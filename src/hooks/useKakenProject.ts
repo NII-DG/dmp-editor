@@ -50,7 +50,7 @@ export function useKakenProject(kakenNumber: string) {
     queryFn: async () => {
       const client = new KakenApiClient({
         useCache: false,
-        appId: KAKEN_APP_ID || undefined,
+        appId: import.meta.env.VITE_KAKEN_APP_ID || undefined,
         fetchFn: kakenProxyFetch,
       })
       const response = await client.projects.search({ projectNumber: kakenNumber })

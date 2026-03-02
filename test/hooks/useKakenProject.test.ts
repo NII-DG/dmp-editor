@@ -144,7 +144,7 @@ describe("useKakenProject", () => {
     // fetchFn rewrites KAKEN/NRID URLs to proxy paths to avoid CORS issues
     expect(vi.mocked(KakenApiClient)).toHaveBeenCalledWith({
       useCache: false,
-      appId: KAKEN_APP_ID || undefined,
+      appId: import.meta.env.VITE_KAKEN_APP_ID || undefined,
       fetchFn: expect.any(Function),
     })
   })
