@@ -22,7 +22,7 @@ docker compose up -d
 ```bash
 docker network create dmp-editor-network
 docker compose -f compose.dev.yml up -d --build
-docker compose exec app npm run dev
+docker compose -f compose.dev.yml exec app npm run dev
 ```
 
 ## Release
