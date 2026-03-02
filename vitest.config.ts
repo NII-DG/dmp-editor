@@ -9,6 +9,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || "0.0.0"),
+    DMP_EDITOR_BASE: JSON.stringify(process.env.DMP_EDITOR_BASE || "/"),
+    KAKEN_APP_ID: JSON.stringify(process.env.KAKEN_APP_ID ?? ""),
+  },
   test: {
     environment: "jsdom",
     globals: true,
