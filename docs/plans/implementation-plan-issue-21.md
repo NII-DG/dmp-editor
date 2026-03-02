@@ -257,7 +257,7 @@ test/hooks/useGrdmProjectMetadata.test.ts
 
 ---
 
-### タスク 4: Nodes 系 API の移行（`getNodes`, `getProject`, `listingProjects`, `createProject`）
+### タスク 4: Nodes 系 API の移行（`getNodes`, `getProject`, `listingProjects`, `createProject`）　→　完了
 
 **目的**: タスク1の調査結果に基づき、Nodes 系関数を新パッケージへ移行する。
 

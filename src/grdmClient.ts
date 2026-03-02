@@ -1,3 +1,5 @@
+import type { NodeListParams, OsfNodeAttributes, TransformedResource } from "@hirakinii-packages/grdm-api-typescript"
+import { GrdmClient } from "@hirakinii-packages/grdm-api-typescript"
 import { z } from "zod"
 
 import { GRDM_CONFIG } from "@/config"
@@ -48,6 +50,72 @@ const fetchWithRetry = async (
   }
 
   throw new Error("Unreachable code reached")
+}
+
+/** Creates a GrdmClient instance configured for the current GRDM environment */
+const createGrdmClient = (token: string) =>
+  new GrdmClient({ token, baseUrl: `${GRDM_API_BASE_URL}/` })
+
+/**
+ * Converts a TransformedResource<OsfNodeAttributes> (from osf-api-v2-typescript)
+ * into the legacy NodeData shape used throughout grdmClient.ts.
+ */
+const transformedToNodeData = (node: TransformedResource<OsfNodeAttributes>): NodeData => ({
+  id: node.id,
+  type: "nodes",
+  attributes: {
+    title: node.title,
+    description: node.description,
+    category: node.category,
+    date_created: node.date_created,
+    date_modified: node.date_modified,
+  },
+  relationships: (node.relationships as NodeData["relationships"]) ?? {},
+  links: {
+    html: node.links?.html ?? "",
+    self: node.links?.self ?? "",
+  },
+})
+
+/**
+ * Converts ProjectOrComponentNodeFilterOptions to NodeListParams
+ * (the format expected by osf-api-v2-typescript's Nodes resource).
+ */
+const filterOptionsToNodeListParams = (
+  filterOptions?: ProjectOrComponentNodeFilterOptions,
+): NodeListParams => {
+  if (!filterOptions) return {}
+
+  const params: NodeListParams = {}
+
+  if (filterOptions.id !== undefined && filterOptions.id !== "") {
+    params["filter[id]"] = filterOptions.id
+  }
+  if (filterOptions.category !== undefined) {
+    params["filter[category]"] = filterOptions.category
+  }
+  if (filterOptions.title !== undefined && filterOptions.title !== "") {
+    params["filter[title]"] = filterOptions.title
+  }
+  if (filterOptions.description !== undefined && filterOptions.description !== "") {
+    params["filter[description]"] = filterOptions.description
+  }
+  if (filterOptions.public !== undefined) {
+    params["filter[public]"] = filterOptions.public
+  }
+  if (filterOptions.tags !== undefined) {
+    params["filter[tags]"] = Array.isArray(filterOptions.tags)
+      ? filterOptions.tags.join(",")
+      : filterOptions.tags
+  }
+  if (filterOptions.date_created !== undefined && filterOptions.date_created !== "") {
+    params["filter[date_created]"] = filterOptions.date_created
+  }
+  if (filterOptions.date_modified !== undefined && filterOptions.date_modified !== "") {
+    params["filter[date_modified]"] = filterOptions.date_modified
+  }
+
+  return params
 }
 
 export const authenticateGrdm = async (token: string): Promise<boolean> => {
@@ -265,68 +333,32 @@ export interface ProjectOrComponentNodeFilterOptions {
   root?: string
 }
 
-/**
- * Convert FilterOptions to URL query string
- * Modern approach using URLSearchParams
- */
-const toFilterString = (
-  filterOptions?: ProjectOrComponentNodeFilterOptions,
-): string => {
-  if (!filterOptions) return ""
-
-  const params = new URLSearchParams()
-
-  Object.entries(filterOptions).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      // Handle tags array
-      const stringValue = Array.isArray(value)
-        ? value.join(",")
-        : String(value)
-      params.append(`filter[${key}]`, stringValue)
-    }
-  })
-
-  const queryString = params.toString()
-  return queryString ? `?${queryString}` : ""
-}
-
 export const getNodes = async (
   token: string,
   followPagination = false,
   filterOptions?: ProjectOrComponentNodeFilterOptions,
 ): Promise<GetNodesResponse> => {
-  const url = `${GRDM_API_BASE_URL}/nodes/${toFilterString(filterOptions)}`
-  let allData: GetNodesResponse["data"] = []
-  let nextUrl: string | null = url
-
   try {
-    while (nextUrl) {
-      const response = await fetchWithRetry(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-      if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
-      }
-      const json = await response.json()
-      const parsed = getNodesResponseSchema.parse(json)
+    const client = createGrdmClient(token)
+    const params = filterOptionsToNodeListParams(filterOptions)
+    const paginatedResult = await client.nodes.listNodesPaginated(params)
 
-      allData = [...allData, ...parsed.data]
-      nextUrl = followPagination ? parsed.links.next : null
-    }
+    const allData = followPagination
+      ? await paginatedResult.toArray()
+      : paginatedResult.data
+
+    const nodeDataArray = allData.map(transformedToNodeData)
 
     return {
-      data: allData,
+      data: nodeDataArray,
       links: {
         first: null,
         last: null,
         prev: null,
         next: null,
         meta: {
-          total: allData.length,
-          per_page: allData.length,
+          total: nodeDataArray.length,
+          per_page: nodeDataArray.length,
         },
       },
     }
@@ -397,21 +429,10 @@ export const getProjectResponseSchema = z.object({
 })
 
 export const getProject = async (token: string, projectId: string): Promise<GetProjectResponse> => {
-  const url = `${GRDM_API_BASE_URL}/nodes/${projectId}/`
-
   try {
-    const response = await fetchWithRetry(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
-    }
-    const json = await response.json()
-
-    return getProjectResponseSchema.parse(json)
+    const client = createGrdmClient(token)
+    const node = await client.nodes.getById(projectId)
+    return { data: transformedToNodeData(node) }
   } catch (error) {
     console.error("Failed to get project from GRDM", error)
     throw error
@@ -795,33 +816,10 @@ export const createProjectResponseSchema = z.object({
 })
 
 export const createProject = async (token: string, projectName: string): Promise<ProjectInfo> => {
-  const url = `${GRDM_API_BASE_URL}/nodes/`
-  const data = {
-    data: {
-      type: "nodes",
-      attributes: {
-        title: projectName,
-        category: "project",
-      },
-    },
-  }
-
   try {
-    const response = await fetchWithRetry(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
-    }
-    const json = await response.json()
-    const node = createProjectResponseSchema.parse(json).data
-
-    return nodeToProjectInfo(node)
+    const client = createGrdmClient(token)
+    const node = await client.nodes.create({ title: projectName, category: "project" })
+    return nodeToProjectInfo(transformedToNodeData(node))
   } catch (error) {
     throw new Error("Failed to create project", { cause: error })
   }
