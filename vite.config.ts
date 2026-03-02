@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react-swc"
 import path from "path"
-import { defineConfig } from "vitest/config"
+import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -81,12 +81,4 @@ export default defineConfig({
     KAKEN_APP_ID: JSON.stringify(process.env.KAKEN_APP_ID ?? ""),
   },
   base: process.env.DMP_EDITOR_BASE || "/",
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: path.resolve(__dirname, "test/setupTests.ts"),
-    include: [
-      "./test/**/*.{test,spec}.{ts,tsx,js,jsx}",
-    ],
-  },
 })
