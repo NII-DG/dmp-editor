@@ -1,7 +1,7 @@
 import AddLinkOutlined from "@mui/icons-material/AddLinkOutlined"
 import LinkOffOutlined from "@mui/icons-material/LinkOffOutlined"
 import OpenInNew from "@mui/icons-material/OpenInNew"
-import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material"
+import { Box, Button, Link, Typography, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, colors, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Collapse } from "@mui/material"
 import { SxProps } from "@mui/system"
 import { useState } from "react"
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
@@ -9,12 +9,151 @@ import { useFieldArray, useFormContext, useWatch } from "react-hook-form"
 import SectionHeader from "@/components/EditProject/SectionHeader"
 import { DmpFormValues } from "@/dmp"
 import { DMP_PROJECT_PREFIX, ProjectInfo, formatDateToTimezone } from "@/grdmClient"
+import { useGrdmProjectMetadata } from "@/hooks/useGrdmProjectMetadata"
 import { User } from "@/hooks/useUser"
 
 interface ProjectTableProps {
   sx?: SxProps
   user: User
   projects: ProjectInfo[]
+}
+
+interface ProjectRowProps {
+  project: ProjectInfo
+  user: User
+  isLinked: boolean
+  onLink: (projectId: string) => void
+  onUnlinkRequest: (projectId: string) => void
+}
+
+/**
+ * Renders a single project row plus an optional metadata sub-row for linked projects.
+ * Separating this into a sub-component allows useGrdmProjectMetadata to be called
+ * per-project without violating the rules of hooks.
+ */
+function ProjectRow({ project, user, isLinked, onLink, onUnlinkRequest }: ProjectRowProps) {
+  const { data: metaList, isLoading: isMetaLoading, isError: isMetaError } = useGrdmProjectMetadata(
+    isLinked ? project.id : null,
+  )
+
+  // Take the first registration's grdmMeta if available
+  const grdmMeta = metaList?.data[0]?.grdmMeta
+
+  return (
+    <>
+      <TableRow key={project.id}>
+        <TableCell sx={{ textAlign: "left", p: "0.5rem 1rem", width: "40%" }}>
+          <Link
+            href={project.html}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}
+          >
+            {project.title}
+            <OpenInNew sx={{ fontSize: "1rem" }} />
+          </Link>
+        </TableCell>
+        <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
+          {formatDateToTimezone(project.dateCreated, user.timezone)}
+        </TableCell>
+        <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
+          {formatDateToTimezone(project.dateModified, user.timezone)}
+        </TableCell>
+        <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
+          <Button
+            variant="outlined"
+            color={isLinked ? "warning" : "primary"}
+            size="small"
+            onClick={isLinked ? () => onUnlinkRequest(project.id) : () => onLink(project.id)}
+            startIcon={isLinked ? <LinkOffOutlined /> : <AddLinkOutlined />}
+            sx={{ width: "130px" }}
+          >
+            {isLinked ? "関連付け解除" : "関連付ける"}
+          </Button>
+        </TableCell>
+      </TableRow>
+
+      {isLinked && (
+        <TableRow>
+          <TableCell colSpan={4} sx={{ p: 0, borderTop: "none" }}>
+            <Collapse in={isLinked} timeout="auto" unmountOnExit>
+              <Box sx={{ px: "1rem", py: "0.5rem", backgroundColor: colors.grey[50] }}>
+                {isMetaLoading && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <CircularProgress size={14} />
+                    <Typography variant="caption" color="text.secondary">
+                      {"GRDM 登録情報を取得中..."}
+                    </Typography>
+                  </Box>
+                )}
+                {isMetaError && (
+                  <Typography variant="caption" color="error">
+                    {"GRDM 登録情報の取得に失敗しました。"}
+                  </Typography>
+                )}
+                {!isMetaLoading && !isMetaError && !grdmMeta && (
+                  <Typography variant="caption" color="text.secondary">
+                    {"GRDM 登録情報はありません。"}
+                  </Typography>
+                )}
+                {grdmMeta && (
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "auto 1fr",
+                      columnGap: "1rem",
+                      rowGap: "0.1rem",
+                    }}
+                  >
+                    {grdmMeta.funder && (
+                      <>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: "bold" }}>
+                          {"助成機関"}
+                        </Typography>
+                        <Typography variant="caption">{grdmMeta.funder}</Typography>
+                      </>
+                    )}
+                    {grdmMeta.programNameJa && (
+                      <>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: "bold" }}>
+                          {"プログラム名"}
+                        </Typography>
+                        <Typography variant="caption">{grdmMeta.programNameJa}</Typography>
+                      </>
+                    )}
+                    {grdmMeta.projectNameJa && (
+                      <>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: "bold" }}>
+                          {"プロジェクト名"}
+                        </Typography>
+                        <Typography variant="caption">{grdmMeta.projectNameJa}</Typography>
+                      </>
+                    )}
+                    {grdmMeta.japanGrantNumber && (
+                      <>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: "bold" }}>
+                          {"課題番号"}
+                        </Typography>
+                        <Typography variant="caption">{grdmMeta.japanGrantNumber}</Typography>
+                      </>
+                    )}
+                    {grdmMeta.fundingStreamCode && (
+                      <>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: "bold" }}>
+                          {"助成区分"}
+                        </Typography>
+                        <Typography variant="caption">{grdmMeta.fundingStreamCode}</Typography>
+                      </>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            </Collapse>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  )
 }
 
 export default function ProjectTableSection({ sx, user, projects }: ProjectTableProps) {
@@ -117,50 +256,14 @@ export default function ProjectTableSection({ sx, user, projects }: ProjectTable
           </TableHead>
           <TableBody>
             {filtered.map((project) => (
-              <TableRow key={project.id}>
-                <TableCell sx={{ textAlign: "left", p: "0.5rem 1rem", width: "40%" }}>
-                  <Link
-                    href={project.html}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", textDecoration: "none" }}
-                  >
-                    {project.title}
-                    <OpenInNew sx={{ fontSize: "1rem" }} />
-                  </Link>
-                </TableCell>
-                <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
-                  {formatDateToTimezone(project.dateCreated, user.timezone)}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
-                  {formatDateToTimezone(project.dateModified, user.timezone)}
-                </TableCell>
-                <TableCell sx={{ textAlign: "center", p: "0.5rem 1rem", width: "20%" }}>
-                  <Button
-                    variant="outlined"
-                    color={linkedProjectIds.includes(project.id) ?
-                      "warning" :
-                      "primary"
-                    }
-                    size="small"
-                    onClick={linkedProjectIds.includes(project.id) ?
-                      () => handleUnlinkProjectRequest(project.id) :
-                      () => handleLinkProject(project.id)
-                    }
-                    startIcon={linkedProjectIds.includes(project.id) ?
-                      <LinkOffOutlined /> :
-                      <AddLinkOutlined />
-                    }
-                    sx={{ width: "130px" }}
-                  >
-                    {
-                      linkedProjectIds.includes(project.id) ?
-                        "関連付け解除" :
-                        "関連付ける"
-                    }
-                  </Button>
-                </TableCell>
-              </TableRow>
+              <ProjectRow
+                key={project.id}
+                project={project}
+                user={user}
+                isLinked={linkedProjectIds.includes(project.id)}
+                onLink={handleLinkProject}
+                onUnlinkRequest={handleUnlinkProjectRequest}
+              />
             ))}
           </TableBody>
         </Table>
