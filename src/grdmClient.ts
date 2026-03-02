@@ -1,3 +1,18 @@
+/**
+ * GRDM API client — DMP file operation layer.
+ *
+ * Responsibility: This module is the dedicated client for DMP file operations on GRDM storage.
+ * It owns the logic for reading/writing the DMP JSON file (`dmp-project.json`) and the
+ * file-system traversal utilities (`getFiles`, `findFilesNode`, `readFile`, `writeFile`)
+ * that support those operations.
+ *
+ * Functions that interact with GRDM Nodes API (`getNodes`, `getProject`, `listingProjects`,
+ * `createProject`) remain here as thin compatibility wrappers around
+ * `@hirakinii-packages/grdm-api-typescript`; they are kept to avoid breaking existing callers.
+ *
+ * `getMe` / `authenticateGrdm` use raw fetch because `OsfClient.users.me()` does not return
+ * the Japanese name fields (`family_name_ja`, `given_name_ja`) that GRDM provides.
+ */
 import type { NodeListParams, OsfNodeAttributes, TransformedResource } from "@hirakinii-packages/grdm-api-typescript"
 import { GrdmClient } from "@hirakinii-packages/grdm-api-typescript"
 import { z } from "zod"
@@ -9,6 +24,18 @@ export const DMP_FILE_NAME = "dmp-project.json"
 export const DMP_PROJECT_PREFIX = "dmp-project-"
 const GRDM_API_BASE_URL = GRDM_CONFIG.API_BASE_URL
 
+/**
+ * Fetch wrapper with automatic retry and timeout.
+ *
+ * Kept because `@hirakinii-packages/grdm-api-typescript`'s internal `HttpClient` does not
+ * implement retry logic: it performs a single fetch and throws on failure.
+ * This wrapper adds:
+ *   - Up to 5 retries with a 1-second delay between attempts
+ *   - Explicit handling of HTTP 429 (Too Many Requests)
+ *   - A 10-second per-request timeout via `AbortController`
+ *
+ * Used by: `authenticateGrdm`, `getMe`, `getFiles`, `readFile`, `writeFile`
+ */
 const fetchWithRetry = async (
   url: string,
   options: RequestInit = {},
@@ -236,30 +263,6 @@ export interface NodeData {
   }
 }
 
-export const nodeDataSchema = z.object({
-  id: z.string(),
-  type: z.literal("nodes"),
-  attributes: z.object({
-    title: z.string(),
-    description: z.string(),
-    category: z.string(),
-    date_created: z.string(),
-    date_modified: z.string(),
-  }),
-  relationships: z.record(
-    z.object({
-      links: z.object({
-        related: z.object({
-          href: z.string(),
-        }),
-      }),
-    })),
-  links: z.object({
-    html: z.string(),
-    self: z.string(),
-  }),
-})
-
 export interface GetNodesResponse {
   data: NodeData[]
   links: {
@@ -273,20 +276,6 @@ export interface GetNodesResponse {
     }
   }
 }
-
-export const getNodesResponseSchema = z.object({
-  data: z.array(nodeDataSchema),
-  links: z.object({
-    first: z.string().nullable(),
-    last: z.string().nullable(),
-    prev: z.string().nullable(),
-    next: z.string().nullable(),
-    meta: z.object({
-      total: z.number(),
-      per_page: z.number(),
-    }),
-  }),
-})
 
 /**
  * Filter options for GRDM API projects/components node queries
@@ -424,10 +413,6 @@ export interface GetProjectResponse {
   data: NodeData
 }
 
-export const getProjectResponseSchema = z.object({
-  data: nodeDataSchema,
-})
-
 export const getProject = async (token: string, projectId: string): Promise<GetProjectResponse> => {
   try {
     const client = createGrdmClient(token)
@@ -554,6 +539,15 @@ export const getFilesResponseSchema = z.object({
   }),
 })
 
+/**
+ * Fetches file/folder nodes from an arbitrary WaterButler URL.
+ *
+ * Kept because `OsfClient.files` only supports a fixed `(nodeId, provider)` URL pattern.
+ * This function accepts any URL, which is required by:
+ *   - `writeFile` — fetches directories mid-path after auto-creating them
+ *   - `findFilesNode` — recurses into sub-folder URLs returned by the API
+ *   - `listingFileNodes` — supports `folderNodeId`-based URLs not expressible via the package
+ */
 export const getFiles = async (token: string, url: string, followPagination = false): Promise<GetFilesResponse> => {
   let allData: GetFilesResponse["data"] = []
   let nextUrl: string | null = url
@@ -598,6 +592,14 @@ const findFilesNodeFromDataList = (nodes: GetFilesResponse["data"], pathName: st
   return nodes.find((node) => node.attributes.name === pathName) ?? null
 }
 
+/**
+ * Resolves a Unix-style path (e.g. `"dir/subdir/file.json"`) to its `FilesNode` by recursively
+ * descending through the GRDM osfstorage hierarchy.
+ *
+ * Kept because `@hirakinii-packages/grdm-api-typescript` provides no equivalent:
+ * `OsfClient.files` lists nodes by `(nodeId, provider)` but does not traverse nested paths.
+ * This function bridges that gap by following `relationships.files` links level by level.
+ */
 export const findFilesNode = async (token: string, projectId: string, path: string): Promise<FilesNode> => {
   try {
     const pathArray = path.replace(/^\/+|\/+$/g, "").split("/")
@@ -765,6 +767,17 @@ export const writeFile = async (token: string, projectId: string, path: string, 
   }
 }
 
+/**
+ * Reads the DMP JSON file (`dmp-project.json`) from GRDM and returns a validated `Dmp` object.
+ *
+ * DMP-specific responsibilities not present in the new package:
+ *   - Locates the canonical file by `DMP_FILE_NAME` via `findFilesNode`
+ *   - Applies backward-compatibility migrations to older DMP formats:
+ *       - Initialises missing `linkedGrdmFiles` arrays
+ *       - Renames `linkedGrdmProjectIds` (array of strings) to `linkedGrdmProjects`
+ *         (array of `{ projectId }` objects)
+ *   - Validates the result with `dmpSchema` (Zod)
+ */
 export const readDmpFile = async (token: string, projectId: string): Promise<{
   dmp: Dmp
   node: FilesNode
@@ -799,6 +812,12 @@ export const readDmpFile = async (token: string, projectId: string): Promise<{
   }
 }
 
+/**
+ * Serialises a `Dmp` object to JSON and writes it to GRDM as `dmp-project.json`.
+ *
+ * Delegates to `writeFile`, which handles directory auto-creation and upload URL resolution —
+ * custom logic that has no equivalent in `@hirakinii-packages/grdm-api-typescript`.
+ */
 export const writeDmpFile = async (token: string, projectId: string, dmp: Dmp): Promise<void> => {
   try {
     await writeFile(token, projectId, DMP_FILE_NAME, JSON.stringify(dmp, null, 2))
@@ -806,14 +825,6 @@ export const writeDmpFile = async (token: string, projectId: string, dmp: Dmp): 
     throw new Error("Failed to write DMP file", { cause: error })
   }
 }
-
-export interface CreateProjectResponse {
-  data: NodeData
-}
-
-export const createProjectResponseSchema = z.object({
-  data: nodeDataSchema,
-})
 
 export const createProject = async (token: string, projectName: string): Promise<ProjectInfo> => {
   try {

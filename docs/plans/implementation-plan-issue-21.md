@@ -291,7 +291,7 @@ test/hooks/useGrdmProjectMetadata.test.ts
 
 ---
 
-### タスク 5: `grdmClient.ts` のスリム化とドキュメント化
+### タスク 5: `grdmClient.ts` のスリム化とドキュメント化　→　完了
 
 **目的**: タスク3・4の移行完了後、`grdmClient.ts` から移行済みのコードを削除し、
 残存コードの役割を明確にする。
