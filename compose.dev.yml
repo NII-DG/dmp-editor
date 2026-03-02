@@ -11,6 +11,7 @@ services:
     environment:
       - DMP_EDITOR_HOST=0.0.0.0
       - DMP_EDITOR_PORT=3000
+      - KAKEN_APP_ID=${KAKEN_APP_ID:-}
     ports:
       - 127.0.0.1:3000:3000
     working_dir: /app

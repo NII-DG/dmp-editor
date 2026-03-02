@@ -13,6 +13,9 @@ RUN npm ci
 
 COPY . .
 
+ARG KAKEN_APP_ID=""
+ENV KAKEN_APP_ID=$KAKEN_APP_ID
+
 RUN npm run build
 
 EXPOSE 3000
