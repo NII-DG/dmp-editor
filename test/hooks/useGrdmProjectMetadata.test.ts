@@ -1,5 +1,4 @@
-import type { GrdmProjectMetadataAttributes, GrdmRegisteredMeta } from "@hirakinii-packages/grdm-api-typescript"
-import type { TransformedList, TransformedResource } from "osf-api-v2-typescript"
+import type { GrdmProjectMetadataAttributes, GrdmRegisteredMeta, TransformedList, TransformedResource } from "@hirakinii-packages/grdm-api-typescript"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { createElement } from "react"

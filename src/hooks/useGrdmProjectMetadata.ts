@@ -1,7 +1,6 @@
 import { GrdmClient } from "@hirakinii-packages/grdm-api-typescript"
-import type { GrdmProjectMetadataAttributes } from "@hirakinii-packages/grdm-api-typescript"
+import type { GrdmProjectMetadataAttributes, TransformedList } from "@hirakinii-packages/grdm-api-typescript"
 import { useQuery } from "@tanstack/react-query"
-import type { TransformedList } from "osf-api-v2-typescript"
 import { useRecoilValue } from "recoil"
 
 import { GRDM_CONFIG } from "@/config"

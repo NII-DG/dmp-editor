@@ -121,6 +121,9 @@ export const getMeResponseSchema = z.object({
   }),
 })
 
+/* NOTE: OsfClient.users.me() does not return Japanese name fields (family_name_ja, given_name_ja).
+Migration to grdm-api-typescript is deferred until the upstream package supports these fields. (Issue #21)
+*/
 export const getMe = async (token: string): Promise<GetMeResponse> => {
   const url = `${GRDM_API_BASE_URL}/users/me/`
 

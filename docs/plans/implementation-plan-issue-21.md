@@ -188,7 +188,7 @@ interface OsfUserAttributes {
 
 ---
 
-### タスク 2: `GrdmClient.projectMetadata` の活用（新機能追加）
+### タスク 2: `GrdmClient.projectMetadata` の活用（新機能追加）　→　完了
 
 **目的**: Issue #14 の調査で判明した未活用機能 `GrdmClient.projectMetadata` を使い、
 GRDM に登録済みのプロジェクトメタデータを表示する機能を追加する。
@@ -232,7 +232,7 @@ test/hooks/useGrdmProjectMetadata.test.ts
 
 ---
 
-### タスク 3: `getMe` / `authenticateGrdm` の移行 — **維持確定**
+### タスク 3: `getMe` / `authenticateGrdm` の移行 — **維持確定**　→　完了
 
 **判断結果（確定）**: GRDM の `users/me` エンドポイントは `family_name_ja` / `given_name_ja` 等の日本語フィールドを返さないことが判明。
 `@hirakinii-packages/grdm-api-typescript` 側でも日本語氏名対応は保留されているため、
