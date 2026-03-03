@@ -236,6 +236,51 @@ describe("buildJspsWorkbook", () => {
     expect(dataNames.length).toBe(8)
   })
 
+  it("inserts person overflow rows within section 3 (not at row 40+) (Bug 2)", async () => {
+    // 4 研究代表者 + 3 placeholder rows for other roles = 7 total person rows
+    // Template has 6 person rows (rows 13-18), so 1 row overflows
+    const dmp = initDmp()
+    dmp.personInfo = Array.from({ length: 4 }, (_, i) => ({
+      ...initPersonInfo(),
+      role: ["研究代表者"] as ["研究代表者"],
+      lastName: `Person${i + 1}`,
+      firstName: "",
+    }))
+
+    const rows = await parseSheet(buildJspsWorkbook(readTemplateBuffer(), dmp))
+
+    // All 4 named persons should appear before Excel row 40 (index 39)
+    const personNamesBeforeOverflow = rows
+      .slice(0, 39)
+      .map((r) => String(r[3] ?? ""))
+      .filter((name) => name.startsWith("Person"))
+    expect(personNamesBeforeOverflow.length).toBe(4)
+
+    // Excel row 40 (index 39) should NOT contain any person name
+    const row40 = rows[39] ?? []
+    expect(String(row40[3] ?? "")).not.toMatch(/^Person/)
+  })
+
+  it("inserts data overflow rows within section 4 (not at row 40+) (Bug 3)", async () => {
+    // 0 person overflow (4 placeholder rows ≤ 6 template rows)
+    // 8 data rows → 3 overflow rows inserted within section 4
+    const dmp = initDmp()
+    dmp.personInfo = [] // 4 placeholder rows, all within template capacity
+    dmp.dataInfo = Array.from({ length: 8 }, (_, i) => ({
+      ...initDataInfo(),
+      dataName: `DataItem${i + 1}`,
+    }))
+
+    const rows = await parseSheet(buildJspsWorkbook(readTemplateBuffer(), dmp))
+
+    // All 8 data items should appear before Excel row 40 (index 39)
+    const dataNamesBeforeOverflow = rows
+      .slice(0, 39)
+      .map((r) => String(r[1] ?? ""))
+      .filter((name) => name.startsWith("DataItem"))
+    expect(dataNamesBeforeOverflow.length).toBe(8)
+  })
+
   it("generates Blob even for empty DMP", () => {
     const dmp = initDmp()
     const blob = buildJspsWorkbook(readTemplateBuffer(), dmp)

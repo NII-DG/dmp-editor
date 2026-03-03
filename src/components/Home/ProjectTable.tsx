@@ -97,10 +97,10 @@ function ProjectTableRow({ project, user }: { project: ProjectInfo; user: User }
       const { dmp } = await readDmpFile(token, project.id)
       if (format === "jsps") {
         const blob = await exportToJspsExcel(dmp)
-        triggerDownload(blob, `${project.title}_jsps.xlsx`)
+        triggerDownload(blob, `dmp-jsps-${project.title}.xlsx`)
       } else {
         const blob = await exportToExcel(dmp)
-        triggerDownload(blob, `${project.title}_sample.xlsx`)
+        triggerDownload(blob, `dmp-sample-${project.title}.xlsx`)
       }
     } catch {
       showSnackbar("エクスポートに失敗しました", "error")

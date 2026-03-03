@@ -115,9 +115,8 @@ const PERSON_ROW_COUNT = 6 // rows 13–18 in template
 const DATA_ROW_START = 22
 const DATA_ROW_COUNT = 5 // rows 22–26 in template
 
-// Row number where overflow rows (beyond template capacity) start.
-// The template occupies rows 1–39, so overflow begins at 40.
-const OVERFLOW_ROW_START = 40
+// Last row of the original template (before any overflow insertions)
+const TEMPLATE_LAST_ROW = 39
 
 // ---------------------------------------------------------------------------
 // XML helpers
@@ -180,30 +179,84 @@ function setCellInXml(
 }
 
 /**
- * Build a bare <row> XML element with no style information.
- * Used for overflow rows that extend beyond the template's pre-styled area.
+ * Extract the full <row r="N">...</row> XML for a given row number.
+ * Returns an empty string if the row is not found.
  */
-function buildRowXml(rowNum: number, values: (string | number | null | undefined)[]): string {
-  const cells = values
-    .map((val, j) => {
-      const ref = `${colLetter(j)}${rowNum}`
-      if (val === null || val === undefined || val === "") {
-        return `<c r="${ref}"/>`
-      }
-      if (typeof val === "number") {
-        return `<c r="${ref}"><v>${val}</v></c>`
-      }
-      return `<c r="${ref}" t="inlineStr"><is><t>${escXml(String(val))}</t></is></c>`
-    })
-    .join("")
-  return `<row r="${rowNum}">${cells}</row>`
+function extractRowXml(sheetXml: string, rowNum: number): string {
+  const re = new RegExp(`<row r="${rowNum}"[^>]*>[\\s\\S]*?</row>`)
+  const match = sheetXml.match(re)
+  return match ? match[0] : ""
 }
 
 /**
- * Append a <row> element into sheetData just before </sheetData>.
+ * Clone a row's XML, reassigning the row number and all cell references from
+ * sourceRow to targetRow while clearing cell values (preserving styles).
  */
-function appendRowXml(sheetXml: string, rowXml: string): string {
-  return sheetXml.replace("</sheetData>", `${rowXml}</sheetData>`)
+function cloneStyledRow(rowXml: string, sourceRow: number, targetRow: number): string {
+  let result = rowXml
+  // Update row element r attribute
+  result = result.replace(`<row r="${sourceRow}"`, `<row r="${targetRow}"`)
+  // Update all cell r attributes (e.g. r="A18" → r="A19")
+  result = result.replace(new RegExp(`(r="[A-Z]+)${sourceRow}(")`, "g"), `$1${targetRow}$2`)
+  // Clear cell values while preserving styles
+  result = result.replace(/<v>[\s\S]*?<\/v>/g, "")
+  result = result.replace(/<is>[\s\S]*?<\/is>/g, "")
+  result = result.replace(/\s+t="[^"]*"/g, "")
+  return result
+}
+
+/**
+ * Shift all row numbers >= fromRow downward by shift positions in a single
+ * regex pass (no double-replacement risk).
+ * Handles <row r="N">, <c r="XN">, and <mergeCell ref="X1:Y1"> elements.
+ */
+function shiftRowsFrom(sheetXml: string, fromRow: number, shift: number): string {
+  // Shift row and cell r attributes in one pass
+  let result = sheetXml.replace(/r="([A-Z]*)(\d+)"/g, (_match, colPart: string, numStr: string) => {
+    const num = parseInt(numStr, 10)
+    if (num >= fromRow) {
+      return `r="${colPart}${num + shift}"`
+    }
+    return _match
+  })
+  // Shift mergeCell ref attributes
+  result = result.replace(
+    /ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"/g,
+    (_match, col1: string, num1: string, col2: string, num2: string) => {
+      const n1 = parseInt(num1, 10)
+      const n2 = parseInt(num2, 10)
+      const s1 = n1 >= fromRow ? n1 + shift : n1
+      const s2 = n2 >= fromRow ? n2 + shift : n2
+      if (s1 !== n1 || s2 !== n2) {
+        return `ref="${col1}${s1}:${col2}${s2}"`
+      }
+      return _match
+    },
+  )
+  return result
+}
+
+/**
+ * Insert rowsXml immediately after the closing </row> tag of the specified row number.
+ */
+function insertRowsAfter(sheetXml: string, afterRowNum: number, rowsXml: string): string {
+  const re = new RegExp(`(<row r="${afterRowNum}"[^>]*>[\\s\\S]*?</row>)`)
+  return sheetXml.replace(re, `$1${rowsXml}`)
+}
+
+/**
+ * Add merge cell entries to the sheet XML and update the mergeCells count.
+ */
+function addMergeCells(sheetXml: string, merges: string[]): string {
+  if (merges.length === 0) return sheetXml
+  const countMatch = sheetXml.match(/<mergeCells count="(\d+)"/)
+  if (!countMatch) return sheetXml
+  const oldCount = parseInt(countMatch[1], 10)
+  const newCount = oldCount + merges.length
+  let result = sheetXml.replace(/<mergeCells count="\d+"/, `<mergeCells count="${newCount}"`)
+  const mergeEntries = merges.map((ref) => `<mergeCell ref="${ref}"/>`).join("")
+  result = result.replace("</mergeCells>", `${mergeEntries}</mergeCells>`)
+  return result
 }
 
 /**
@@ -243,39 +296,71 @@ export function buildJspsWorkbook(templateBuffer: ArrayBuffer, dmp: Dmp): Blob {
   sheetXml = setCellInXml(sheetXml, "C6", dmp.metadata.dateModified)
   sheetXml = setCellInXml(sheetXml, "C9", dmp.projectInfo.projectCode)
 
-  // Section 3: person info — write into template rows 13–18 (up to 6 rows)
+  // Section 3: person info
   const personRows = buildPersonRows(dmp)
-  for (let i = 0; i < Math.min(personRows.length, PERSON_ROW_COUNT); i++) {
+  const extraPersonCount = Math.max(0, personRows.length - PERSON_ROW_COUNT)
+
+  if (extraPersonCount > 0) {
+    // Clone the last template person row (row 18) for each extra row needed
+    const lastPersonTemplateRow = PERSON_ROW_START + PERSON_ROW_COUNT - 1 // row 18
+    const templatePersonRowXml = extractRowXml(sheetXml, lastPersonTemplateRow)
+    let clonedPersonRows = ""
+    for (let i = 0; i < extraPersonCount; i++) {
+      const targetRow = lastPersonTemplateRow + 1 + i // rows 19, 20, ...
+      clonedPersonRows += cloneStyledRow(templatePersonRowXml, lastPersonTemplateRow, targetRow)
+    }
+    // Shift all rows >= 19 downward to make room
+    sheetXml = shiftRowsFrom(sheetXml, lastPersonTemplateRow + 1, extraPersonCount)
+    // Insert cloned rows after row 18
+    sheetXml = insertRowsAfter(sheetXml, lastPersonTemplateRow, clonedPersonRows)
+    // Add E:F merge cells for the new person rows (matching template rows 13–18)
+    const newPersonMerges = Array.from({ length: extraPersonCount }, (_, i) => {
+      const row = lastPersonTemplateRow + 1 + i
+      return `E${row}:F${row}`
+    })
+    sheetXml = addMergeCells(sheetXml, newPersonMerges)
+  }
+
+  // Write all person rows into rows 13 to 13+(personRows.length-1)
+  for (let i = 0; i < personRows.length; i++) {
     const rowNum = PERSON_ROW_START + i
     for (let j = 0; j < personRows[i].length; j++) {
       sheetXml = setCellInXml(sheetXml, `${colLetter(j)}${rowNum}`, personRows[i][j])
     }
   }
 
-  // Section 4: data info — write into template rows 22–26 (up to 5 rows)
+  // Section 4: data info (start row shifts if person rows were inserted)
+  const adjustedDataStart = DATA_ROW_START + extraPersonCount
   const dataRows = buildDataRows(dmp)
-  for (let i = 0; i < Math.min(dataRows.length, DATA_ROW_COUNT); i++) {
-    const rowNum = DATA_ROW_START + i
+  const extraDataCount = Math.max(0, dataRows.length - DATA_ROW_COUNT)
+
+  if (extraDataCount > 0) {
+    // Clone the last template data row for each extra row needed
+    const lastDataTemplateRow = adjustedDataStart + DATA_ROW_COUNT - 1
+    const templateDataRowXml = extractRowXml(sheetXml, lastDataTemplateRow)
+    let clonedDataRows = ""
+    for (let i = 0; i < extraDataCount; i++) {
+      const targetRow = lastDataTemplateRow + 1 + i
+      clonedDataRows += cloneStyledRow(templateDataRowXml, lastDataTemplateRow, targetRow)
+    }
+    // Shift all rows after the last template data row downward
+    sheetXml = shiftRowsFrom(sheetXml, lastDataTemplateRow + 1, extraDataCount)
+    // Insert cloned rows after the last template data row
+    sheetXml = insertRowsAfter(sheetXml, lastDataTemplateRow, clonedDataRows)
+  }
+
+  // Write all data rows into rows adjustedDataStart to adjustedDataStart+(dataRows.length-1)
+  for (let i = 0; i < dataRows.length; i++) {
+    const rowNum = adjustedDataStart + i
     for (let j = 0; j < dataRows[i].length; j++) {
       sheetXml = setCellInXml(sheetXml, `${colLetter(j)}${rowNum}`, dataRows[i][j])
     }
   }
 
-  // Overflow rows (beyond template capacity) — appended after the last
-  // template row (39) to avoid conflicting with existing row numbers.
-  let nextOverflowRow = OVERFLOW_ROW_START
-  for (let i = PERSON_ROW_COUNT; i < personRows.length; i++) {
-    sheetXml = appendRowXml(sheetXml, buildRowXml(nextOverflowRow++, personRows[i]))
-  }
-  for (let i = DATA_ROW_COUNT; i < dataRows.length; i++) {
-    sheetXml = appendRowXml(sheetXml, buildRowXml(nextOverflowRow++, dataRows[i]))
-  }
-
-  // If overflow rows were added, extend the sheet dimension so Excel (and
-  // XLSX parsers) can read those rows.
-  const lastWrittenRow = nextOverflowRow - 1
-  if (lastWrittenRow >= OVERFLOW_ROW_START) {
-    sheetXml = updateDimension(sheetXml, lastWrittenRow)
+  // Extend the sheet dimension if rows were inserted
+  const totalExtraRows = extraPersonCount + extraDataCount
+  if (totalExtraRows > 0) {
+    sheetXml = updateDimension(sheetXml, TEMPLATE_LAST_ROW + totalExtraRows)
   }
 
   // Wrap in native Uint8Array to avoid cross-realm issues in environments
@@ -285,7 +370,7 @@ export function buildJspsWorkbook(templateBuffer: ArrayBuffer, dmp: Dmp): Blob {
   const outputBytes = zipSync(modifiedZip)
   // Use .buffer (ArrayBuffer) rather than the Uint8Array directly so that
   // FileReader.readAsArrayBuffer works correctly in all environments.
-  return new Blob([outputBytes.buffer], {
+  return new Blob([outputBytes.buffer as ArrayBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   })
 }
