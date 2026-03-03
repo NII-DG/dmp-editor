@@ -10,7 +10,7 @@
 
 ---
 
-## Bug 1: ファイル名の統一
+## Bug 1: ファイル名の統一　→　修正済み
 
 ### 現状
 
@@ -44,7 +44,7 @@ triggerDownload(blob, `dmp-sample-${project.title}.xlsx`)
 
 ---
 
-## Bug 2 & 3: オーバーフロー行をセクション内に挿入
+## Bug 2 & 3: オーバーフロー行をセクション内に挿入　→　修正済み
 
 ### 現状の問題
 
@@ -86,7 +86,7 @@ triggerDownload(blob, `dmp-sample-${project.title}.xlsx`)
 
 ### `buildJspsWorkbook` の修正フロー
 
-```
+```plaintext
 1. Section 3: 担当者情報
    extraPersonCount = max(0, personRows.length - PERSON_ROW_COUNT)
    if extraPersonCount > 0:

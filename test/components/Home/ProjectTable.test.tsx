@@ -204,6 +204,52 @@ describe("ProjectTable", () => {
     })
   })
 
+  describe("Filename for download (Bug 1)", () => {
+    it("uses dmp-jsps-<project.title>.xlsx for JSPS format", async () => {
+      const user = userEvent.setup()
+      const mockBlob = new Blob(["test"], { type: "application/zip" })
+      mockReadDmpFile.mockResolvedValue({ dmp: mockDmp, node: {} })
+      mockExportToJspsExcel.mockResolvedValue(mockBlob)
+
+      let capturedFilename: string | null = null
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+        capturedFilename = this.download
+      })
+
+      renderWithProviders(<ProjectTable user={mockUser} projects={mockProjects} />)
+
+      const exportButtons = screen.getAllByRole("button", { name: /Export/ })
+      await user.click(exportButtons[0])
+      await user.click(screen.getByText("JSPS 形式"))
+
+      await waitFor(() => {
+        expect(capturedFilename).toBe("dmp-jsps-dmp-project-Test Project 1.xlsx")
+      })
+    })
+
+    it("uses dmp-sample-<project.title>.xlsx for sample format", async () => {
+      const user = userEvent.setup()
+      const mockBlob = new Blob(["test"], { type: "application/vnd.ms-excel" })
+      mockReadDmpFile.mockResolvedValue({ dmp: mockDmp, node: {} })
+      mockExportToExcel.mockResolvedValue(mockBlob)
+
+      let capturedFilename: string | null = null
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+        capturedFilename = this.download
+      })
+
+      renderWithProviders(<ProjectTable user={mockUser} projects={mockProjects} />)
+
+      const exportButtons = screen.getAllByRole("button", { name: /Export/ })
+      await user.click(exportButtons[0])
+      await user.click(screen.getByText("サンプル形式"))
+
+      await waitFor(() => {
+        expect(capturedFilename).toBe("dmp-sample-dmp-project-Test Project 1.xlsx")
+      })
+    })
+  })
+
   describe("Error handling", () => {
     it("shows error snackbar when readDmpFile fails", async () => {
       const user = userEvent.setup()
